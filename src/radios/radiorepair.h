@@ -32,6 +32,7 @@
 
 class NetworkAccessManager;
 class QNetworkReply;
+class RadioDiscover;
 
 // Repairs broken HLS stream URLs coming out of radio station directories.
 //
@@ -86,6 +87,10 @@ class RadioRepair : public QObject {
   void Abort();
 
  private:
+  // Asks RadioDiscover for a working stream for a station that is not in the
+  // substitution table, calling done with an empty QUrl when none is found.
+  void DiscoverStation(const QUrl &url, const std::function<void (const QUrl &)> &done);
+
   // Walks the list one entry at a time, probing each HLS master in turn. The
   // continuation is a plain lambda rather than a slot so that no std::function
   // appears in a signature the Qt meta-object system has to parse.
@@ -98,6 +103,7 @@ class RadioRepair : public QObject {
   static QUrl RepairMasterUrl(const QUrl &url);
 
   SharedPtr<NetworkAccessManager> network_;
+  RadioDiscover *discover_;
   QList<QNetworkReply*> replies_;
 };
 

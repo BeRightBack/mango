@@ -805,6 +805,7 @@ set(SOURCES
   src/radios/radioparadiseservice.cpp
   src/radios/radiobrowserservice.cpp
   src/radios/radiorepair.cpp
+  src/radios/radiodiscover.cpp
   src/radios/radiobrowsersearchview.cpp
   src/radios/radiobrowsersearchmodel.cpp
   src/radios/radiomimedata.cpp
@@ -1101,6 +1102,7 @@ set(HEADERS
   src/radios/radioparadiseservice.h
   src/radios/radiobrowserservice.h
   src/radios/radiorepair.h
+  src/radios/radiodiscover.h
   src/radios/radiobrowsersearchview.h
   src/radios/radiobrowsersearchmodel.h
 

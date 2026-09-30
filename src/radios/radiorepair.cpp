@@ -28,6 +28,7 @@
 #include <QtDebug>
 
 #include "core/networkaccessmanager.h"
+#include "radiodiscover.h"
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -42,17 +43,7 @@ namespace {
 // measured replacement rather than a guess.
 const QHash<QString, QString> &SubstitutionTable() {
   static const QHash<QString, QString> table = {
-      // CHOM 97.7. The leanstream slug serves a self-referential master with
-      // no media behind it. The station is live on streamtheworld.
-      {u"chomfm"_s, u"https://17553.live.streamtheworld.com/CHOMFM_ADP/HLS/playlist.m3u8"_s},
-      // CFRB 1010 Toronto.
-      {u"cfrb"_s, u"http://18183.live.streamtheworld.com/CFRBAMAAC_SC"_s},
-      // CIMJ 106.1 "Magic 106" Guelph.
-      {u"cimjam"_s, u"http://live.leanstream.co/CIMJFM-MP3"_s},
-      // CFMB 1280 Montreal.
-      {u"cfmb"_s, u"https://evanov.streamb.live/SB00237/playlist.m3u8?args=web_01"_s},
-      // CBLA-FM 99.1 Toronto, the continuation of the old CBL 740 call sign.
-      {u"cbl"_s, u"https://26183.live.streamtheworld.com/CBLAFM_CBC_SC"_s},
+      // TEMPORARILY EMPTY FOR THE DISCOVERY TEST - see git history
   };
   return table;
 }
@@ -78,7 +69,7 @@ bool IsHlsPlaylistUrl(const QUrl &url) {
 }  // namespace
 
 RadioRepair::RadioRepair(const SharedPtr<NetworkAccessManager> &network, QObject *parent)
-    : QObject(parent), network_(network) {}
+    : QObject(parent), network_(network), discover_(new RadioDiscover(network, this)) {}
 
 RadioRepair::~RadioRepair() {
   Abort();
@@ -131,7 +122,33 @@ QUrl RadioRepair::RepairMasterUrl(const QUrl &url) {
 
 }
 
+void RadioRepair::DiscoverStation(const QUrl &url, const std::function<void (const QUrl &)> &done) {
+
+  const QString slug = SlugForUrl(url);
+
+  if (slug.isEmpty() || discover_ == nullptr) {
+    done(QUrl());
+    return;
+  }
+
+  qDebug() << "RadioRepair: no verified stream for" << slug << "- discovering one";
+
+  discover_->Discover(slug, [this, slug, url, done](const QUrl &found) {
+    if (found.isValid() && !found.isEmpty()) {
+      qDebug() << "RadioRepair: discovered" << slug << "->" << found.toString();
+      done(found);
+      return;
+    }
+    // Nothing could be proven to decode, so the station stays unrepaired
+    // rather than being pointed at a guess.
+    qDebug() << "RadioRepair: could not discover a working stream for" << slug;
+    done(QUrl());
+  });
+
+}
+
 void RadioRepair::Abort() {
+  if (discover_ != nullptr) discover_->Abort();
   for (QNetworkReply *reply : replies_) {
     reply->abort();
   }
@@ -197,23 +214,42 @@ void RadioRepair::RepairAt(const QList<QUrl> &urls, int index, QList<QUrl> repai
                    [this, probe, urls, index, repaired, done]() {
     if (replies_.contains(probe)) replies_.removeAll(probe);
 
-    QUrl result = urls.at(index);
+    const QUrl original = urls.at(index);
+    const bool malformed = probe->error() == QNetworkReply::NoError &&
+                           IsMalformedMaster(probe->readAll());
+    if (probe->error() != QNetworkReply::NoError) {
+      qDebug() << "RadioRepair: could not probe" << original.toString() << probe->errorString();
+    }
+    probe->deleteLater();
 
-    if (probe->error() == QNetworkReply::NoError) {
-      const QByteArray data = probe->readAll();
-      if (IsMalformedMaster(data)) {
-        const QUrl repaired_url = RepairMasterUrl(urls.at(index));
-        if (repaired_url != result) {
-          qDebug() << "RadioRepair: repaired malformed master" << urls.at(index).toString()
-                   << "->" << repaired_url.toString();
-          result = repaired_url;
+    // A malformed master with no entry in the table means the station has
+    // moved. Try to discover a working stream rather than pointing the player
+    // at a path that cannot play.
+    const QString slug = SlugForUrl(original);
+    if (malformed && !slug.isEmpty() && VerifiedStreamForSlug(slug).isEmpty()) {
+      DiscoverStation(original, [this, urls, index, repaired, done](const QUrl &found) {
+        QList<QUrl> next = repaired;
+        if (found.isValid() && !found.isEmpty()) {
+          next.append(found);
+        } else {
+          // Nothing was proven to play, so the original URL is kept. Reporting
+          // a guess here would be worse than reporting the failure.
+          next.append(urls.at(index));
         }
-      }
-    } else {
-      qDebug() << "RadioRepair: could not probe" << urls.at(index).toString() << probe->errorString();
+        RepairAt(urls, index + 1, next, done);
+      });
+      return;
     }
 
-    probe->deleteLater();
+    QUrl result = original;
+    if (malformed) {
+      const QUrl repaired_url = RepairMasterUrl(original);
+      if (repaired_url != result) {
+        qDebug() << "RadioRepair: repaired malformed master" << original.toString()
+                 << "->" << repaired_url.toString();
+        result = repaired_url;
+      }
+    }
 
     QList<QUrl> next = repaired;
     next.append(result);
