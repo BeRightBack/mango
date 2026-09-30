@@ -29,6 +29,8 @@
 #include "radioservice.h"
 #include "radiochannel.h"
 
+class RadioRepair;
+
 class QNetworkReply;
 
 class TaskManager;
@@ -93,6 +95,9 @@ class RadioBrowserService : public RadioService {
   PendingSearch pending_search_;
   bool has_pending_search_;
   bool has_pending_countries_;
+
+  // Repairs unusable HLS master playlists in search results.
+  RadioRepair *repair_;
 
   static const QStringList kServers;
   int server_index_;

@@ -146,13 +146,13 @@ int main(int argc, char *argv[]) {
   mac::MacMain();
 #endif
 
-  QCoreApplication::setApplicationName(u"Strawberry"_s);
-  QCoreApplication::setOrganizationName(u"Strawberry"_s);
+  QCoreApplication::setApplicationName(u"Mango"_s);
+  QCoreApplication::setOrganizationName(u"Mango"_s);
   QCoreApplication::setApplicationVersion(QStringLiteral(STRAWBERRY_VERSION_DISPLAY));
   QCoreApplication::setOrganizationDomain(u"strawberrymusicplayer.org"_s);
 
   // This makes us show up nicely in gnome-volume-control
-  g_set_application_name("Strawberry");
+  g_set_application_name("Mango");
   g_setenv("PULSE_PROP_application.icon_name", "strawberry", TRUE);
   g_setenv("PULSE_PROP_media.role", "music", TRUE);
 
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   // Output the version, so when people attach log output to bug reports they don't have to tell us which version they're using.
-  qLog(Info) << "Strawberry" << STRAWBERRY_VERSION_DISPLAY << "Qt" << QLibraryInfo::version().toString();
+  qLog(Info) << "Mango Music Player" << STRAWBERRY_VERSION_DISPLAY << "Qt" << QLibraryInfo::version().toString();
   qLog(Info) << QStringLiteral("%1 %2 - (%3 %4) [%5]").arg(QSysInfo::prettyProductName(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion(), QSysInfo::currentCpuArchitecture());
 
   // Seed the random number generators.
@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
   Utilities::IncreaseFDLimit();
 #endif
 
-  QGuiApplication::setApplicationDisplayName(u"Strawberry Music Player"_s);
+  QGuiApplication::setApplicationDisplayName(u"Mango Music Player"_s);
   QGuiApplication::setDesktopFileName(u"org.strawberrymusicplayer.strawberry"_s);
   QGuiApplication::setQuitOnLastWindowClosed(false);
 

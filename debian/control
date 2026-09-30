@@ -1,7 +1,7 @@
-Source: strawberry
+Source: mango
 Section: sound
 Priority: optional
-Maintainer: Jonas Kvinge <jonas@jkvinge.net>
+Maintainer: Steven Pinel <steven_pinel@hotmail.com>
 Build-Depends: debhelper-compat (= 12),
                git,
                make,
@@ -35,7 +35,7 @@ Build-Depends: debhelper-compat (= 12),
                libsparsehash-dev
 Standards-Version: 4.7.0
 
-Package: strawberry
+Package: mango
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
@@ -45,9 +45,9 @@ Depends: ${shlibs:Depends},
          gstreamer1.0-plugins-good,
          gstreamer1.0-alsa,
          gstreamer1.0-pulseaudio
-Homepage: http://www.strawberrymusicplayer.org/
+Homepage: https://github.com/stevenpinel/mango
 Description: music player and music collection organizer
- Strawberry is a music player aimed at music collectors and audiophiles.
+ Mango is a music player aimed at music collectors and audiophiles.
  .
  Features:
   - Play and organize music
@@ -68,4 +68,7 @@ Description: music player and music collection organizer
   - Streaming support for Subsonic-compatible servers
   - Unofficial streaming support for Tidal and Qobuz
  .
- It is a fork of Clementine. The name is inspired by the band Strawbs.
+ Mango is a custom port of Strawberry Music Player, which is in turn a fork
+ of Clementine. It repairs unusable HLS master playlists returned by the
+ Radio Browser directory for stations served from the leanstream CDN, which
+ otherwise fail to play. Distributed free of charge, and not for resale.

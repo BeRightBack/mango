@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Mango Music Player application icon.
+     Tuned for small sizes: a bold fruit silhouette with a short, high-contrast
+     waveform. Few shapes and thick strokes, so it stays readable at 24px.
+     Flat fills only, so every SVG renderer draws it identically. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- stem, kept short and thick so it survives downscaling -->
+  <path d="M66 30 C66 24 64 21 61 19"
+        fill="none" stroke="#5D4037" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- leaf: a single solid blob, close to the fruit so it cannot detach -->
+  <path d="M68 30 C78 20 94 18 101 23 C93 34 79 36 68 30 Z" fill="#558B2F"/>
+
+  <!-- mango body: bold kidney/oval, tilted -->
+  <path d="M58 34
+           C38 34 21 52 21 75
+           C21 97 39 112 61 112
+           C83 112 103 97 103 75
+           C103 63 97 53 87 47
+           C79 42 71 40 63 40
+           C62 37 60 34 58 34 Z"
+        fill="#FFA726"/>
+
+  <!-- darker lower-right for depth -->
+  <path d="M61 112
+           C83 112 103 97 103 75
+           C103 63 97 53 87 47
+           C79 42 71 40 63 40
+           C78 54 84 71 80 88
+           C77 101 70 110 61 112 Z"
+        fill="#EF6C00"/>
+
+  <!-- waveform: 4 thick bars, centred, maximum contrast -->
+  <g fill="#FFFFFF">
+    <rect x="42" y="82" width="10" height="20" rx="5"/>
+    <rect x="56" y="70" width="10" height="44" rx="5"/>
+    <rect x="70" y="78" width="10" height="28" rx="5"/>
+    <rect x="84" y="86" width="10" height="12" rx="5"/>
+  </g>
+</svg>

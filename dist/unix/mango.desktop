@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Mango Music Player
+GenericName=Music Player
+Comment=Plays music
+Exec=mango %U
+TryExec=mango
+Icon=mango
+Terminal=false
+Categories=AudioVideo;Player;Qt;Audio;
+Keywords=Audio;Player;Radio;Music;
+MimeType=x-content/audio-player;audio/flac;audio/ogg;audio/vorbis;audio/aac;audio/mp4;audio/mpeg;audio/mpegurl;audio/x-flac;audio/x-vorbis;audio/x-speex;audio/x-wav;audio/x-wavpack;audio/x-ape;audio/x-mp3;audio/x-mpeg;audio/x-mpegurl;audio/x-ms-wma;audio/x-musepack;
+StartupNotify=true

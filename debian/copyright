@@ -1,7 +1,26 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: strawberry
-Upstream-Contact: Jonas Kvinge <jonas@jkvinge.net>
-Source: https://github.com/strawberrymusicplayer/strawberry
+Upstream-Name: mango
+Upstream-Contact: Steven Pinel <steven_pinel@hotmail.com>
+Source: https://github.com/stevenpinel/mango
+
+Comment:
+ .
+ Mango Music Player is a custom port of Strawberry Music Player 1.2.30,
+ which is in turn a fork of Clementine. It is distributed free of charge and
+ is not for resale.
+ .
+ The changes made in this fork are the rename to Mango, the separate data
+ directory, and the repair of unusable HLS master playlists returned by the
+ Radio Browser directory for stations served from the leanstream CDN. All
+ upstream copyright and licence headers are retained unchanged, as required by
+ the GNU General Public License version 3 or later.
+ .
+
+Files: src/radios/radiorepair.cpp
+       src/radios/radiorepair.h
+       README.mango.md
+Copyright: 2026, Steven Pinel
+License: GPL-3+
 
 Files: *
 Copyright: 2010-2015, David Sansome <me@davidsansome.com>

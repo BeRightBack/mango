@@ -1511,7 +1511,7 @@ void MainWindow::PlaylistsLoaded() {
 
 void MainWindow::MediaStopped() {
 
-  setWindowTitle(u"Strawberry Music Player"_s);
+  setWindowTitle(u"Mango Music Player"_s);
 
   ui_->action_stop->setEnabled(false);
   ui_->action_stop_after_this_track->setEnabled(false);

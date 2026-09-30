@@ -37,6 +37,7 @@
 #include "settings/radiosettingspage.h"
 #include "radiobrowserservice.h"
 #include "radiochannel.h"
+#include "radiorepair.h"
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -50,6 +51,7 @@ RadioBrowserService::RadioBrowserService(const SharedPtr<TaskManager> task_manag
       server_discovered_(false),
       has_pending_search_(false),
       has_pending_countries_(false),
+      repair_(new RadioRepair(network, this)),
       server_index_(0),
       servers_tried_(0) {}
 
@@ -61,6 +63,8 @@ QUrl RadioBrowserService::Homepage() { return QUrl(u"https://www.radio-browser.i
 QUrl RadioBrowserService::Donate() { return QUrl(u"https://www.radio-browser.info/"_s); }
 
 void RadioBrowserService::Abort() {
+
+  if (repair_ != nullptr) repair_->Abort();
 
   while (!replies_.isEmpty()) {
     QNetworkReply *reply = replies_.takeFirst();
@@ -249,7 +253,30 @@ void RadioBrowserService::SearchReply(QNetworkReply *reply, const int task_id, c
   }
 
   const bool has_more = (array.size() == limit);
-  Q_EMIT SearchFinished(channels, has_more);
+
+  // Some directories serve stations with an HLS master playlist that GStreamer
+  // cannot play. Repair the results before showing them, so a station added
+  // from search is playable straight away.
+  QList<QUrl> urls;
+  urls.reserve(channels.size());
+  for (const RadioChannel &channel : channels) {
+    urls.append(channel.url);
+  }
+
+  repair_->RepairChannels(urls, [this, channels, has_more](const QList<QUrl> &repaired) {
+    RadioChannelList out;
+    out.reserve(repaired.size());
+    for (int i = 0; i < repaired.size() && i < channels.size(); i++) {
+      RadioChannel channel = channels.at(i);
+      if (repaired.at(i) != channel.url) {
+        qDebug() << "RadioBrowserService: repaired" << channel.name << channel.url.toString()
+                 << "->" << repaired.at(i).toString();
+        channel.url = repaired.at(i);
+      }
+      out.append(channel);
+    }
+    Q_EMIT SearchFinished(out, has_more);
+  });
 
 }
 
