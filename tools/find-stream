@@ -1,0 +1,363 @@
+#!/usr/bin/env python3
+"""
+find-stream - locate a working public stream URL for a radio station call sign.
+
+Motivation
+----------
+Mango's RadioRepair keeps a substitution table of verified streams. Adding an
+entry by hand meant finding the station's current stream and proving it decodes.
+That work is repetitive and error prone, and when done by hand it is easy to
+substitute a different station that happens to work - which looks like a fix
+but is not one.
+
+This tool automates it. Every candidate URL must pass a real decode test before
+it is reported. A URL that merely returns HTTP 200 is worthless: the leanstream
+CDN answers 200 with a self-referential playlist for any path, so status codes
+prove nothing. The only acceptable evidence is decoded audio.
+
+Tiers
+-----
+Each tier is tried in order and the first verified hit wins:
+
+  1. streamtheworld PLS  - deterministic, keyed by call sign. Most Canadian
+     stations that moved to that platform resolve as
+     playerservices.streamtheworld.com/pls/<CALLSIGN>.pls
+  2. call sign variants  - same platform, common suffixes: -ADP, _SC, AMAAC, FM
+  3. leanstream siblings - the live.leanstream.co / rogers.leanstream.co path
+     patterns that other stations on the same host use, including the -MP3 form
+  4. Radio Browser       - alternate entries for the same station name, which
+     sometimes carry a working host the primary entry lacks
+  5. station homepage    - grep the official site for embedded player URLs
+
+Tier 5 is the weak fallback: a page may advertise a stream that is geo blocked
+or offline, which is exactly why every result still has to decode.
+
+Usage
+-----
+  find-stream.py CHOMFM
+  find-stream.py CHOMFM --json
+  find-stream.py --batch callsigns.txt
+
+Exit status is 0 when a working stream is found, 1 when none is.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+
+UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+
+# Seconds to let the decoder run. A live stream keeps producing, so a healthy
+# hit ends on the timeout rather than exiting cleanly.
+DECODE_TIMEOUT = 22
+
+# leanstream serves some paths on port 8000 and some on 443. Both are listed
+# because the malformed playlists reference the 8000 form.
+LEANSTREAM_HOSTS = (
+    "https://live.leanstream.co",
+    "http://live.leanstream.co",
+    "https://rogers-hls.leanstream.co",
+    "https://rogers.leanstream.co",
+)
+
+# Suffixes seen on real Canadian streams, in rough order of likelihood.
+# -ADP is the HLS adaptive variant that CHOM 97.7 uses.
+STW_SUFFIXES = ("", "-ADP", "_SC", "AMAAC", "AMAAC_SC", "FM", "FM-MP3")
+
+# The -MP3 form is a real fallback: several leanstream stations serve AAC that
+# is dead while the MP3 sibling on the same host is alive.
+LEANSTREAM_SUFFIXES = ("-MP3", "FM-MP3", "AM-MP3", "")
+
+RADIO_BROWSER = ("de1", "de2", "at1", "nl1")
+
+
+def log(msg: str) -> None:
+    print(f"  {msg}", file=sys.stderr)
+
+
+def http_get(url: str, timeout: int = 20, max_bytes: int = 400_000):
+    """GET a URL. Returns (status, body_bytes) or (None, None) on failure."""
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), resp.read(max_bytes)
+    except urllib.error.HTTPError as e:
+        return e.code, b""
+    except Exception:
+        return None, None
+
+
+def decode_test(url: str) -> bool:
+    """
+    True only if GStreamer decodes the stream.
+
+    This is the gate. Nothing is reported as working without passing it, so the
+    tool cannot claim a stream works on the strength of an HTTP 200.
+    """
+    try:
+        proc = subprocess.run(
+            ["timeout", str(DECODE_TIMEOUT), "gst-launch-1.0", "playbin",
+             f"uri={url}", "audio-sink=fakesink"],
+            capture_output=True, text=True, timeout=DECODE_TIMEOUT + 8,
+        )
+    except subprocess.TimeoutExpired:
+        # The decoder itself was still running, which for a live stream means
+        # it was playing. Treat as success.
+        return True
+    except Exception:
+        return False
+    out = (proc.stdout or "") + (proc.stderr or "")
+    if re.search(r"^ERROR|Internal data stream error|Could not update any variant",
+                 out, re.MULTILINE):
+        return False
+    return True
+
+
+# --- tier 1 and 2: streamtheworld, keyed by call sign -----------------------
+
+def is_malformed_master(data: bytes) -> bool:
+    """
+    True when a leanstream HLS master is unusable by GStreamer.
+
+    Working and broken stations on the same host return byte-identical
+    playlists apart from this: a broken one carries a bare
+    "#EXT-X-STREAM-INF:" with no BANDWIDTH, which hlsdemux rejects before it
+    fetches any media. The same rule is applied by the runtime repair in
+    src/radios/radiorepair.cpp, and both must agree.
+    """
+    if isinstance(data, str):
+        data = data.encode("utf-8", "replace")
+    if b"#EXTM3U" not in data:
+        return False
+    return b"#EXT-X-STREAM-INF" in data and b"BANDWIDTH" not in data
+
+
+def normalize_callsign(callsign: str) -> str:
+    """
+    Uppercase a call sign for use in a provider path.
+
+    Underscores are significant and must be preserved: streamtheworld serves
+    CBLAFM_CBC at exactly that path, while stripping the underscore yields
+    CBLAFMCBC and a 404. Only separators that no provider uses are dropped.
+    """
+    return re.sub(r"[^A-Za-z0-9_]", "", callsign).upper()
+
+
+def streamtheworld_candidates(callsign: str):
+    base = normalize_callsign(callsign)
+    if not base:
+        return
+    for suffix in STW_SUFFIXES:
+        tag = f"{base}{suffix}" if suffix else base
+        yield 1, f"https://playerservices.streamtheworld.com/pls/{tag}.pls"
+
+
+def extract_pls_all(body: bytes):
+    """
+    Every FileN entry in a PLS, in order.
+
+    A PLS usually lists several mirrors of the same stream. Any one of them can
+    be down or overloaded while the others play, so all of them are candidates,
+    not just File1. Taking only File1 loses stations that are genuinely live.
+    """
+    found = []
+    for line in body.decode("utf-8", "replace").splitlines():
+        m = re.match(r"\s*File\d+\s*=\s*(\S+)", line, re.IGNORECASE)
+        if m and m.group(1).strip():
+            found.append(m.group(1).strip())
+    return found
+
+
+def try_streamtheworld(callsign: str):
+    """Return the first PLS candidate that resolves to a decodable stream."""
+    for tier, pls_url in streamtheworld_candidates(callsign):
+        status, body = http_get(pls_url)
+        if status != 200 or not body:
+            continue
+        for target in extract_pls_all(body):
+            if decode_test(target):
+                return target, f"streamtheworld PLS ({pls_url.rsplit('/', 1)[-1]})"
+    return None, None
+
+
+# --- tier 3: leanstream sibling paths ---------------------------------------
+
+def leanstream_candidates(callsign: str):
+    base = normalize_callsign(callsign)
+    if not base:
+        return
+    for host in LEANSTREAM_HOSTS:
+        for suffix in LEANSTREAM_SUFFIXES:
+            yield 3, f"{host}/{base}{suffix}"
+
+
+def try_leanstream(callsign: str):
+    for _tier, url in leanstream_candidates(callsign):
+        if decode_test(url):
+            return url, "leanstream sibling path"
+    return None, None
+
+
+# --- tier 4: Radio Browser alternate entries --------------------------------
+
+def radio_browser_candidates(name: str, country: str = "CA"):
+    for host in RADIO_BROWSER:
+        url = (f"https://{host}.api.radio-browser.info/json/stations/search?"
+               + urllib.parse.urlencode({"name": name, "countrycode": country,
+                                         "limit": 25, "order": "votes",
+                                         "reverse": "true"}))
+        status, body = http_get(url)
+        if status != 200 or not body:
+            continue
+        try:
+            rows = json.loads(body)
+        except Exception:
+            continue
+        for row in rows:
+            u = row.get("url_resolved") or row.get("url") or ""
+            if u:
+                yield 4, u
+        break
+    return
+
+
+def try_radio_browser(name: str):
+    for _tier, url in radio_browser_candidates(name):
+        if decode_test(url):
+            return url, "radio-browser alternate entry"
+    return None, None
+
+
+# --- tier 5: official homepage ----------------------------------------------
+
+PLAYER_RE = re.compile(
+    rb"https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*"
+    rb"(?:\.m3u8|playlist|/icy|/stream|stream\.s?[a-z0-9./_-]*)"
+    rb"[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*",
+    re.IGNORECASE,
+)
+
+
+def try_homepage(homepage: str):
+    if not homepage:
+        return None, None
+    status, body = http_get(homepage, max_bytes=1_200_000)
+    if status != 200 or not body:
+        return None, None
+    seen = set()
+    for m in PLAYER_RE.finditer(body):
+        url = m.group(0).decode("utf-8", "replace").rstrip('"\\\'<>,);')
+        if url in seen or len(url) < 12:
+            continue
+        seen.add(url)
+        if decode_test(url):
+            return url, f"homepage ({urllib.parse.urlparse(homepage).netloc})"
+        if len(seen) >= 12:
+            break
+    return None, None
+
+
+# --- orchestration ----------------------------------------------------------
+
+def find_stream(callsign: str, name: str = "", homepage: str = "") -> dict:
+    """
+    Try every tier in order. Returns a result dict; caller decides whether to
+    present it. A stream is only ever reported after decode_test passes.
+    """
+    attempts = []
+
+    def record(tier: int, url: str, ok: bool) -> None:
+        attempts.append({"tier": tier, "url": url, "decoded": ok})
+
+    # 1 + 2
+    url, how = try_streamtheworld(callsign)
+    if url:
+        record(1, url, True)
+        return {"callsign": callsign, "url": url, "source": how, "attempts": attempts}
+    log(f"tier 1-2 (streamtheworld): no working stream for {callsign}")
+
+    # 3
+    url, how = try_leanstream(callsign)
+    if url:
+        record(3, url, True)
+        return {"callsign": callsign, "url": url, "source": how, "attempts": attempts}
+    log(f"tier 3 (leanstream siblings): none for {callsign}")
+
+    # 4
+    if name:
+        url, how = try_radio_browser(name)
+        if url:
+            record(4, url, True)
+            return {"callsign": callsign, "url": url, "source": how, "attempts": attempts}
+        log(f"tier 4 (radio browser): none for {name!r}")
+
+    # 5
+    url, how = try_homepage(homepage)
+    if url:
+        record(5, url, True)
+        return {"callsign": callsign, "url": url, "source": how, "attempts": attempts}
+    log(f"tier 5 (homepage): none")
+
+    return {"callsign": callsign, "url": None, "source": None, "attempts": attempts}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Find and verify a radio stream URL.")
+    ap.add_argument("callsign", nargs="*", help="call sign(s), e.g. CHOMFM")
+    ap.add_argument("--batch", metavar="FILE", help="file of call signs, one per line")
+    ap.add_argument("--name", default="", help="station name, enables the Radio Browser tier")
+    ap.add_argument("--homepage", default="", help="official site, enables the homepage tier")
+    ap.add_argument("--json", action="store_true", help="emit JSON")
+    ap.add_argument("--jobs", type=int, default=3, help="parallel call signs")
+    args = ap.parse_args()
+
+    callsigns = list(args.callsign)
+    if args.batch:
+        with open(args.batch) as fh:
+            callsigns += [ln.strip() for ln in fh
+                          if ln.strip() and not ln.startswith("#")]
+    if not callsigns:
+        ap.error("give a call sign or --batch FILE")
+
+    def run(cs: str) -> dict:
+        log(f"--- {cs}")
+        return find_stream(cs, args.name, args.homepage)
+
+    with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as ex:
+        results = list(ex.map(run, callsigns))
+
+    found = sum(1 for r in results if r["url"])
+
+    if args.json:
+        # stdout must stay machine readable: the summary and the progress log
+        # both belong on stderr when --json is in effect.
+        print(json.dumps(results, indent=2))
+        print(f"  {found}/{len(results)} verified", file=sys.stderr)
+    else:
+        print()
+        print(f"  {'call sign':12} {'result':8} url")
+        print(f"  {'-'*12} {'-'*8} {'-'*60}")
+        for r in results:
+            if r["url"]:
+                print(f"  {r['callsign']:12} {'FOUND':8} {r['url']}")
+                print(f"  {'':12} {'':8} via {r['source']}")
+            else:
+                print(f"  {r['callsign']:12} {'none':8} -")
+        print(f"\n  {found}/{len(results)} verified")
+
+    # Exit non-zero unless every requested call sign was resolved, so a caller
+    # cannot mistake a partial run for a complete one.
+    return 0 if found == len(results) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
