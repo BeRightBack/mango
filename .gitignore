@@ -4,7 +4,8 @@
 /.qtcreator
 /.kdev4
 /strawberry.kdev4
-/.vscode
+/.vscode/*
+!/.vscode/settings.json
 /.code-workspace
 /.sublime-workspace
 /.idea

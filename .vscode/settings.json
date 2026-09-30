@@ -1,0 +1,36 @@
+{
+  // Mango-specific settings. Applies only to this project and overrides the
+  // user-level defaults, so nothing here affects your other work.
+  "cmake.buildDirectory": "${workspaceFolder}/build",
+  "cmake.configureOnOpen": false,
+  "cmake.generator": "Unix Makefiles",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+
+  // Mango ships its own .clang-format, so defer to it rather than a global style.
+  "C_Cpp.formatting": "clangFormat",
+  "C_Cpp.clang_format_style": "file",
+
+  // The CMake build dir is large; keep it out of search and the file watcher.
+  "search.exclude": {
+    "**/build": true,
+    "**/.git": true
+  },
+  "files.watcherExclude": {
+    "**/build/**": true
+  },
+  "files.exclude": {
+    "**/build": true,
+    "**/.git": true
+  },
+
+  // Radio URL repair is the point of this fork; surface the debug output.
+  "C_Cpp.loggingLevel": "Information",
+
+  "[cpp]": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[cmake]": {
+    "editor.tabSize": 2
+  }
+}
