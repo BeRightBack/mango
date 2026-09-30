@@ -147,5 +147,50 @@ class TestIsMalformedMaster(unittest.TestCase):
         self.assertFalse(fs.is_malformed_master(b"binary audio data"))
 
 
+class TestSameStation(unittest.TestCase):
+    """
+    Guard against substituting a different station that happens to decode.
+
+    Regression: querying "TED" matched "A Dick Ted Radio" and
+    "Addicted 2 Oldies Music Radio" on a substring, and the tool reported a
+    Jamendo stream as if it were the station. The stream played, so the decode
+    test passed, and the answer was still wrong.
+    """
+
+    def test_rejects_substring_common_word(self):
+        self.assertFalse(fs.same_station("A Dick Ted Radio", "TED"))
+        self.assertFalse(fs.same_station(
+            "Addicted 2 Oldies Music Radio Canada's #1", "TED"))
+
+    def test_accepts_exact_call_sign_match(self):
+        self.assertTrue(fs.same_station("CFRB News/Talk 1010", "CFRB"))
+        self.assertTrue(fs.same_station("CHOM 97.7", "CHOMFM"))
+
+    def test_rejects_different_call_sign(self):
+        self.assertFalse(fs.same_station("CFMB 1280", "CHOM"))
+        self.assertFalse(fs.same_station("CHMJ 900", "CFRB"))
+
+    def test_frequency_mismatch_rejected(self):
+        # Same brand, different frequency, different station.
+        self.assertFalse(fs.same_station("CITE 92.1 Winnipeg", "CITE 91.1 Toronto"))
+
+    def test_frequency_match_accepted(self):
+        self.assertTrue(fs.same_station("CHOM 97.7 Toronto", "CHOM 97.7"))
+
+    def test_rejects_when_query_is_single_generic_word(self):
+        self.assertFalse(fs.same_station("Some Radio Station", "Radio"))
+        self.assertFalse(fs.same_station("Classic Rock Channel", "Rock"))
+
+    def test_empty_inputs_rejected(self):
+        self.assertFalse(fs.same_station("", "CHOM"))
+        self.assertFalse(fs.same_station("CHOM 97.7", ""))
+
+    def test_multiword_query_needs_substantial_overlap(self):
+        self.assertTrue(fs.same_station(
+            "CityNews 570 Kitchener", "CityNews 570 Kitchener"))
+        self.assertFalse(fs.same_station(
+            "CBC Radio One Toronto", "CityNews 680 Toronto"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

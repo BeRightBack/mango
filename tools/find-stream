@@ -210,6 +210,7 @@ def try_leanstream(callsign: str):
 # --- tier 4: Radio Browser alternate entries --------------------------------
 
 def radio_browser_candidates(name: str, country: str = "CA"):
+    """Yield (tier, url, station_name) for directory entries matching a name."""
     for host in RADIO_BROWSER:
         url = (f"https://{host}.api.radio-browser.info/json/stations/search?"
                + urllib.parse.urlencode({"name": name, "countrycode": country,
@@ -225,13 +226,114 @@ def radio_browser_candidates(name: str, country: str = "CA"):
         for row in rows:
             u = row.get("url_resolved") or row.get("url") or ""
             if u:
-                yield 4, u
+                yield 4, u, row.get("name") or ""
         break
-    return
+
+
+# Words that carry no identifying information. A query made up entirely of
+# these is ambiguous and cannot be matched safely.
+STOPWORDS = {
+    "RADIO", "STATION", "FM", "AM", "THE", "OF", "A", "AN", "AND", "LIVE",
+    "CLASSIC", "ROCK", "POP", "JAZZ", "COUNTRY", "NEWS", "MUSIC", "HIT",
+    "HITS", "MIX", "OLD", "NEW", "BEST", "TOP", "CHANNEL", "STREAM",
+    "CANADA", "CANADIAN", "TORONTO", "MONTREAL", "VANCOUVER", "CALGARY",
+    "EDMONTON", "OTTAWA", "WINNIPEG", "HALIFAX", "KITCHENER", "SARNIA",
+    "BARRIE", "FORT", "ERIE", "KINGSTON", "CORNWALL", "Guelph".upper(),
+}
+
+
+def same_station(result_name: str, wanted: str) -> bool:
+    """
+    Whether a directory result plausibly *is* the station we asked for.
+
+    The name tier searches by name, and station names are short and heavily
+    abbreviated: querying "TED" matches "A Dick Ted Radio" and "Addicted 2
+    Oldies Music Radio" because "ted" appears as a substring. Accepting a
+    decodable stream from one of those would substitute a different station
+    that happens to play - precisely the failure this tool exists to prevent.
+
+    A match is only accepted when the query carries something distinguishing:
+    a real call sign, a frequency, or a distinctive word. Three-letter
+    queries are refused outright, because no word of that length is
+    distinctive enough to identify a station: "TED" is a talk-network call
+    sign, an ordinary word, and part of several station names.
+    """
+    if not result_name or not wanted:
+        return False
+
+    wraw = wanted.upper().strip()
+    # A short token cannot be told apart from a common word or another call
+    # sign, so there is nothing to verify. Call signs are four or more
+    # characters, or a frequency must be present.
+    has_freq = re.search(r"\b\d{2,3}\.\d\b", wanted) is not None
+    tokens = re.findall(r"[A-Z0-9]+", wraw)
+    if not has_freq:
+        bare = [t for t in tokens if t not in STOPWORDS]
+        if not bare:
+            return False
+        if all(len(t) <= 3 for t in bare):
+            return False
+
+    rfreq = set(re.findall(r"\b\d{2,3}\.\d\b", result_name))
+    wfreq = set(re.findall(r"\b\d{2,3}\.\d\b", wanted))
+
+    # A call sign is 3-5 letters, but so are ordinary words like TED, RADIO
+    # and SOME. Stopwords are removed first, otherwise a generic word would be
+    # treated as a call sign and any match on it would look decisive.
+    rcall = {w for w in re.findall(r"\b[A-Z]{3,8}\b", result_name.upper())
+             if w not in STOPWORDS}
+    wcall = {w for w in re.findall(r"\b[A-Z]{3,8}\b", wanted.upper())
+             if w not in STOPWORDS}
+
+    # A call sign present in the result must be the one we wanted.
+    if rcall and wcall:
+        # Directories and stream hosts differ on suffixes and the "FM"/"AM"
+        # ending, so CHOMFM and CHOM are the same station. A shared prefix of
+        # at least four characters counts as agreement.
+        def agrees(a: str, b: str) -> bool:
+            return a == b or a.startswith(b) or b.startswith(a) or \
+                (len(a) >= 4 and len(b) >= 4 and
+                 (a[:4] == b[:4]))
+
+        if not any(agrees(r, w) for r in rcall for w in wcall):
+            return False
+        # A matching call sign is decisive only when it is not contradicted by
+        # a frequency. CITE 92.1 Winnipeg is not CITE 91.1 Toronto: the same
+        # call sign was reassigned, so the frequency has to agree too.
+        if wfreq and rfreq and not (wfreq & rfreq):
+            return False
+        return True
+
+    # The query is a single short token and it is not a usable call sign, so
+    # there is nothing distinctive to verify against.
+    if len(wcall) == 1 and not wfreq:
+        token = next(iter(wcall))
+        if len(token) <= 4:
+            return False
+
+    if wfreq and rfreq:
+        if not rfreq & wfreq:
+            return False
+        return True
+
+    # No call sign and no frequency to compare: fall back to distinctive words.
+    rwords = {w for w in re.sub(r"[^A-Z0-9]", " ", result_name.upper()).split()
+              if len(w) > 2 and w not in STOPWORDS}
+    wwords = {w for w in re.sub(r"[^A-Z0-9]", " ", wanted.upper()).split()
+              if len(w) > 2 and w not in STOPWORDS}
+
+    if not wwords:
+        # Nothing distinguishing in the query, so nothing can be verified.
+        return False
+
+    return wwords <= rwords
 
 
 def try_radio_browser(name: str):
-    for _tier, url in radio_browser_candidates(name):
+    for _tier, url, result_name in radio_browser_candidates(name):
+        if not same_station(result_name, name):
+            log(f"  skip {result_name!r}: not the same station as {name!r}")
+            continue
         if decode_test(url):
             return url, "radio-browser alternate entry"
     return None, None
