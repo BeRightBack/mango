@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""
+check-stations - report which saved radio stations are dead or duplicated.
+
+A station entry goes stale in two ways, and both are invisible until playback
+fails:
+
+  dead        the directory URL no longer serves audio. Stations that moved to a
+              different broadcaster leave behind a URL that still answers HTTP
+              200, so status codes cannot detect this - only a decode test can.
+  duplicate   the same station saved twice under different URLs, which happens
+              whenever a station is re-added after being found broken.
+
+Nothing is changed unless --apply is passed, and even then only exact matches
+are removed: a dead row is deleted, and a duplicate is deleted only when
+another row for the same station is confirmed working.
+
+Usage
+-----
+  check-stations                 report only
+  check-stations --json          machine readable report
+  check-stations --apply         delete dead rows and confirmed duplicates
+  check-stations --db PATH       use a specific database
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
+
+DEFAULT_DB = os.path.expanduser("~/.local/share/mango/mango/mango.db")
+
+DECODE_TIMEOUT = 20
+
+# Path words that appear in stream URLs but are never a call sign.
+GENERIC_PATH_TOKENS = {
+    "STREAM", "LIVE", "RADIO", "PLAYER", "AUDIO", "ICE", "ICY", "MP3", "AAC",
+    "HLS", "DASH", "M3U", "MASTER", "MEDIA", "PLAYLIST", "CHANNEL",
+}
+
+
+def decode_test(url: str) -> bool:
+    """True only if GStreamer decodes the stream."""
+    try:
+        proc = subprocess.run(
+            ["timeout", str(DECODE_TIMEOUT), "gst-launch-1.0", "playbin",
+             f"uri={url}", "audio-sink=fakesink"],
+            capture_output=True, text=True, timeout=DECODE_TIMEOUT + 8)
+    except subprocess.TimeoutExpired:
+        return True  # still running means still playing
+    except Exception:
+        return False
+    out = (proc.stdout or "") + (proc.stderr or "")
+    if re.search(r"^ERROR|Internal data stream error|Could not update any variant",
+                 out, re.MULTILINE):
+        return False
+    return True
+
+
+def station_key(title: str, url: str) -> str:
+    """
+    A stable identity for a station, used to spot duplicates saved under
+    different URLs.
+
+    One station can be saved under several URL shapes: a leanstream slug, a
+    streamtheworld edge path, and an HLS variant of that same call sign. All
+    three have to collapse to one key or a duplicate goes unnoticed. The call
+    sign is extracted from anywhere in the URL, not just the last path segment,
+    because the _HLS_ form puts further segments after it.
+    """
+    # A leanstream slug is the most reliable identifier: /rogers/chomfm.stream
+    m = re.search(r"/rogers/([a-z0-9_-]+)\.stream", url.lower())
+    if m:
+        return f"call:{m.group(1).upper()}"
+
+    # streamtheworld and similar hosts put the call sign in the path. Match it
+    # before any directory segment such as /HLS/ so CHOMFM_ADP/HLS/playlist
+    # still reduces to CHOMFM.
+    m = re.search(r"\.com(?::\d+)?/([A-Za-z]{3,8}[0-9A-Z]*)(?:_SC|_ADP|-ADP|"
+                  r"AMAAC|-MP3|/|$)", url)
+    if m:
+        token = m.group(1).upper()
+        # Generic path words are not call signs. A real Canadian call sign
+        # carries a digit, or is a known uppercase station token.
+        if not GENERIC_PATH_TOKENS & {token}:
+            if any(ch.isdigit() for ch in token) or token.isupper():
+                return f"call:{token}"
+
+    words = [w for w in re.sub(r"[^A-Za-z0-9 ]", " ", title).split()
+             if len(w) > 2]
+    return "title:" + " ".join(sorted(w.lower() for w in words[:6]))
+
+
+def load(db_path: str):
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    rows = conn.execute(
+        "SELECT rowid, playlist, type, title, url FROM playlist_items "
+        "WHERE url IS NOT NULL AND url != '' ORDER BY rowid").fetchall()
+    conn.close()
+    return [{"rowid": r[0], "playlist": r[1], "type": r[2],
+             "title": r[3] or "", "url": r[4]} for r in rows]
+
+
+def audit(rows, jobs: int):
+    with ThreadPoolExecutor(max_workers=max(1, jobs)) as ex:
+        alive = list(ex.map(lambda r: decode_test(r["url"]), rows))
+
+    for row, ok in zip(rows, alive):
+        row["alive"] = ok
+        row["key"] = station_key(row["title"], row["url"])
+
+    # Group by station identity to find duplicates.
+    groups: dict[str, list] = {}
+    for row in rows:
+        groups.setdefault(row["key"], []).append(row)
+
+    for key, members in groups.items():
+        if len(members) < 2:
+            continue
+        working = [m for m in members if m["alive"]]
+        if not working:
+            continue
+        # Keep the oldest working row and treat the rest as duplicates of it.
+        # Choosing a survivor explicitly avoids leaving it to chance, and the
+        # oldest entry is the one the user added first.
+        keeper = min(working, key=lambda m: m["rowid"])
+        for m in working:
+            m["duplicate_of"] = keeper["rowid"] if m is not keeper else None
+    return rows
+
+
+def apply_changes(db_path: str, rows) -> list:
+    """
+    Delete dead rows, and delete a duplicate only when another row for the same
+    station is confirmed working. Prints what it did.
+    """
+    dead = [r for r in rows if not r["alive"]]
+    # Only remove duplicates whose station has a surviving working row.
+    dupes = [r for r in rows
+             if r["alive"] and r.get("duplicate_of") is not None]
+
+    if not dead and not dupes:
+        return []
+
+    removed = []
+    try:
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        for r in dead:
+            cur.execute("DELETE FROM playlist_items WHERE rowid = ?", (r["rowid"],))
+            if cur.rowcount:
+                removed.append((r["rowid"], "dead", r["title"] or r["url"]))
+        for r in dupes:
+            cur.execute("DELETE FROM playlist_items WHERE rowid = ?", (r["rowid"],))
+            if cur.rowcount:
+                removed.append((r["rowid"], "duplicate",
+                                f"same station as row {r['duplicate_of']}"))
+        conn.commit()
+        conn.close()
+    except sqlite3.Error as e:
+        print(f"  database error, nothing applied: {e}", file=sys.stderr)
+        return []
+    return removed
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Report dead and duplicate stations.")
+    ap.add_argument("--db", default=DEFAULT_DB)
+    ap.add_argument("--json", action="store_true")
+    ap.add_argument("--apply", action="store_true",
+                    help="delete dead rows and confirmed duplicates")
+    ap.add_argument("--jobs", type=int, default=3)
+    args = ap.parse_args()
+
+    if not os.path.exists(args.db):
+        print(f"  no database at {args.db}")
+        return 1
+
+    rows = audit(load(args.db), args.jobs)
+    dead = [r for r in rows if not r["alive"]]
+    dupes = [r for r in rows if r["alive"] and r.get("duplicate_of") is not None]
+
+    if args.json:
+        print(json.dumps({
+            "total": len(rows),
+            "alive": len(rows) - len(dead),
+            "dead": dead,
+            "duplicates": dupes,
+        }, indent=2))
+        return 0
+
+    print()
+    print(f"  {'row':>4}  {'state':10} {'station / url'}")
+    print(f"  {'-'*4}  {'-'*10} {'-'*56}")
+    for r in rows:
+        if r["alive"] and r.get("duplicate_of") is None:
+            state = "ok"
+        elif r["alive"]:
+            state = f"dup of {r['duplicate_of']}"
+        else:
+            state = "DEAD"
+        label = r["title"] or r["url"]
+        print(f"  {r['rowid']:>4}  {state:10} {label[:56]}")
+        if not r["alive"]:
+            print(f"        {'':10} {r['url'][:56]}")
+
+    print(f"\n  {len(rows)} rows: {len(rows) - len(dead)} working, "
+          f"{len(dead)} dead, {len(dupes)} duplicate")
+
+    if args.apply:
+        removed = apply_changes(args.db, rows)
+        if removed:
+            print(f"\n  removed {len(removed)} row(s):")
+            for rowid, why, what in removed:
+                print(f"    row {rowid} ({why}): {what[:48]}")
+        else:
+            print("\n  nothing needed removing")
+    else:
+        print("\n  re-run with --apply to remove the dead and duplicate rows")
+
+    return 1 if dead or dupes else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
