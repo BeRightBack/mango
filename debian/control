@@ -45,7 +45,7 @@ Depends: ${shlibs:Depends},
          gstreamer1.0-plugins-good,
          gstreamer1.0-alsa,
          gstreamer1.0-pulseaudio
-Homepage: https://github.com/stevenpinel/mango
+Homepage: https://github.com/BeRightBack/mango
 Description: music player and music collection organizer
  Mango is a music player aimed at music collectors and audiophiles.
  .
