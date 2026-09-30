@@ -1,141 +1,104 @@
-# :strawberry: Strawberry Music Player [![Build Status](https://github.com/strawberrymusicplayer/strawberry/actions/workflows/build.yaml/badge.svg?branch=master)](https://github.com/strawberrymusicplayer/strawberry/actions)
-[![Sponsor](https://img.shields.io/badge/-Sponsor-green?logo=github)](https://github.com/sponsors/jonaski)
-[![Patreon](https://img.shields.io/badge/patreon-donate-green.svg)](https://patreon.com/jonaskvinge)
-[![PayPal](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/jonaskvinge)
+# Mango Music Player
 
-Strawberry is a **music player and music collection organizer**, originally forked from *Clementine* in 2018.
-It’s written in **C++ using the Qt framework**, designed for **audiophiles and music collectors**.
+A custom port of [Strawberry Music Player](https://github.com/strawberrymusicplayer/strawberry) 1.2.30,
+forked to fix Canadian internet radio playback on the leanstream CDN.
 
-![Screenshot of Strawberry Music Player](https://raw.githubusercontent.com/strawberrymusicplayer/strawberry/master/data/screenshot/screenshot.png)
+## What this fork fixes
 
----
+Canadian radio stations served from Rogers' leanstream CDN are broken in two
+ways, and neither can be fixed by editing a saved playlist.
 
-## :globe_with_meridians: Resources
+**1. Stations that moved to a different broadcaster.** CHOM 97.7 and several
+other stations are no longer served by leanstream at all. The CDN answers
+`HTTP 200` for any path on those slugs, but returns a master playlist that
+points back at itself on port 8000:
 
-- **Website:** https://www.strawberrymusicplayer.org
-- **Wiki:** https://wiki.strawberrymusicplayer.org
-- **Forum:** https://forum.strawberrymusicplayer.org
-- **GitHub:** https://github.com/strawberrymusicplayer/strawberry
-- **Latest builds:** https://builds.strawberrymusicplayer.org
-- **openSUSE Build Service:**
-  - Stable: https://build.opensuse.org/package/show/home:jonaski:strawberry/strawberry
-  - Unstable: https://build.opensuse.org/package/show/home:jonaski:strawberry-dev/strawberry
-- **Ubuntu PPAs:**
-  - Stable: https://launchpad.net/~jonaski/+archive/ubuntu/strawberry
-  - Unstable: https://launchpad.net/~jonaski/+archive/ubuntu/strawberry-unstable
-- **Translations:** https://crowdin.com/project/strawberrymusicplayer
+```
+#EXTM3U
+#EXT-X-STREAM-INF:
+http://rogers-hls.leanstream.co:8000/rogers/chomfm.stream/playlist.m3u8
+```
 
----
+GStreamer's `hlsdemux` rejects the tag because it carries no `BANDWIDTH`, and
+even if it did not, the variant would loop forever. The reported error is
+`Could not update any variant playlist`.
 
-## :warning: Opening an Issue
+**2. Malformed master playlists on working stations.** A working station on the
+same host serves a byte-identical playlist apart from a valid `BANDWIDTH`:
 
-Before creating a new GitHub issue:
+```
+#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=47000,CODECS="mp4a.40.5"
+https://rogers-hls.leanstream.co/rogers/tor680.stream/48k/playlist.m3u8
+```
 
-1. **Read the [FAQ](https://wiki.strawberrymusicplayer.org/wiki/FAQ)**.
-2. **Search existing issues** to avoid duplicates. If one already exists, comment there with any additional information.
-3. **Use the [forum](https://forum.strawberrymusicplayer.org/)** for technical problems, discussions or feature suggestions — it’s better suited for back-and-forth conversation.
-4. **Feature requests are not accepted on GitHub.** Issues created for feature requests will be closed. You can still discuss ideas on the forum.
-5. **Flatpak users:** We do **not** maintain the Flatpak package. Report Flatpak-specific issues via [Flatpak support](https://flatpak.org/about/).
+Because a URL alone cannot tell the two apart, blindly rewriting every
+leanstream URL is not safe: pointing a healthy station straight at its `48k`
+variant breaks it. `RadioRepair` therefore fetches the master playlist and only
+repairs a playlist that is genuinely malformed.
 
----
+## How it works
 
-## :moneybag: Sponsoring
+`src/radios/radiorepair.{h,cpp}` is called from
+`RadioBrowserService::SearchReply`, at the point where a directory result
+becomes a playable stream. A station re-added from Radio Browser is therefore
+repaired automatically, with no database edits and no proxy.
 
-Strawberry is **free software released under the GPL**.
-If you enjoy using it, please consider **supporting development** through sponsorship or donation.
+- A station whose slug is in the substitution table is replaced with a stream
+  that was verified to decode.
+- Any other leanstream HLS master is fetched and inspected. If it lacks a
+  `BANDWIDTH` attribute it is repointed at a real per-bitrate media playlist.
+- Everything else is passed through untouched, without a network round trip.
 
-**Sponsorship options:**
-1. [Patreon](https://www.patreon.com/jonaskvinge)
-2. [GitHub](https://github.com/sponsors/jonaski)
-3. [Ko-fi](https://ko-fi.com/jonaskvinge)
-4. [PayPal](https://paypal.me/jonaskvinge)
+The substitution table contains only streams verified with:
 
-Supporting open-source developers helps ensure continued maintenance and improvements.
+```bash
+gst-launch-1.0 playbin uri="<url>" audio-sink=fakesink
+```
 
----
+## Building
 
-## :white_check_mark: Features
+Requires Qt 6.4+ and the dependencies declared in `debian/control`. On Debian
+or Kali:
 
-- Play and organize your music collection
-- Support for WAV, FLAC, Ogg FLAC, WavPack, Ogg Vorbis, Opus, Ogg Speex, MPC, TrueAudio, AIFF, MP4/AAC, ALAC, MP3, ASF, Monkey’s Audio, and DSD (DSF/DSDIFF)
-- Bit-perfect playback on Linux
-- MPRIS2 / D-Bus remote control on Linux
-- Native desktop notifications
-- Advanced playlist management
-- Smart and dynamic playlists
-- Audio analyzer, equalizer, moodbar, and waveform seek bar
-- Volume normalization with ReplayGain and EBU R128 loudness analysis
-- Editing tags, and fetching missing tags via acoustic fingerprinting using [AcoustID](https://acoustid.org/) and [MusicBrainz](https://musicbrainz.org/)
-- Album cover art from: [Last.fm](https://www.last.fm/), [MusicBrainz](https://musicbrainz.org/), [Discogs](https://www.discogs.com/), [Musixmatch](https://www.musixmatch.com/), [Deezer](https://www.deezer.com/), [Tidal](https://www.tidal.com/), [Qobuz](https://www.qobuz.com/), [Spotify](https://www.spotify.com/)
-- Lyrics from: [Genius](https://genius.com/), [Musixmatch](https://www.musixmatch.com/), [lyrics.ovh](https://lyrics.ovh/), [songlyrics](https://www.songlyrics.com/), [azlyrics](https://www.azlyrics.com/), [elyrics](https://www.elyrics.net/), [letras](https://www.letras.mus.br) and [lrclib.net](https://lrclib.net/)
-- Audio format conversion (transcoding) to MP3, AAC, FLAC, Ogg Vorbis, Opus, Speex, WavPack, and ASF
-- Music transfer to USB, MTP and iPod devices
-- Scrobbling to [Last.fm](https://www.last.fm/), [ListenBrainz](https://listenbrainz.org/), and Subsonic
-- Global keyboard shortcuts (Linux, macOS, and Windows)
-- Discord Rich Presence
-- Audio CD playback
-- Internet radio from [Radio Paradise](https://radioparadise.com/), [SomaFM](https://somafm.com/), [Radio Browser](https://www.radio-browser.info/), and custom streams
-- Streaming from Subsonic-compatible servers
-- Unofficial Tidal, Spotify, and Qobuz integration
+```bash
+sudo apt install build-essential cmake pkg-config \
+  qt6-base-dev qt6-base-private-dev qt6-base-dev-tools \
+  qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools \
+  libkdsingleapplication-qt6-dev libglib2.0-dev libssl-dev libboost-dev \
+  libsqlite3-dev libicu-dev libtag-dev libxkbcommon-dev libasound2-dev \
+  libpulse-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+  libcdio-dev libgpod-dev libmtp-dev libchromaprint-dev libfftw3-dev \
+  libebur128-dev libsparsehash-dev
 
----
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(nproc)"
+```
 
-:white_check_mark: Tested on **Linux**, **OpenBSD**, **FreeBSD**, **macOS**, and **Windows**.
+The binary is `build/strawberry`. It reports itself as *Mango Music Player*
+and keeps its data separate from Strawberry:
 
-> **Note:** macOS and Windows releases are currently **available to sponsors only**.
-> A monthly sponsorship via [Patreon](https://www.patreon.com/jonaskvinge) grants direct access to new releases.
+| | Mango |
+|---|---|
+| database | `~/.local/share/mango/mango/mango.db` |
+| settings | `~/.config/mango/mango.conf` |
 
----
+## Known limits
 
-## :gear: Requirements
+- The substitution table covers the stations that were verified. A station that
+  has moved and is not listed will still fail, and needs its real stream found
+  and added to the table.
+- Substituted streamtheworld URLs are load-balanced across edge hosts, so a
+  hardcoded host may need updating over time.
+- Stations with no audio anywhere (`chch` is a television station, `chmj` went
+  off air in February 2025) cannot be repaired.
 
-To build Strawberry from source, you’ll need:
+## Licence
 
-**Dependencies:**
-- [CMake 3.13 or higher](https://cmake.org/)
-- C/C++ compiler ([GCC](https://gcc.gnu.org/), [Clang](https://clang.llvm.org/), or [MSVC](https://visualstudio.microsoft.com/vs/features/cplusplus/))
-- [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) or [pkgconf](https://github.com/pkgconf/pkgconf)
-- [Boost](https://www.boost.org/)
-- [GLib](https://developer.gnome.org/glib/)
-- [OpenSSL](https://www.openssl.org/)
-- [Qt 6.4 or higher](https://www.qt.io/) (Core, Concurrent, Gui, Widgets, Network, SQL, D-Bus)
-- [SQLite 3.9 or higher](https://www.sqlite.org)
-- [ALSA (Linux only)](https://www.alsa-project.org/)
-- [GStreamer](https://gstreamer.freedesktop.org/)
-- [TagLib 1.12 or higher](https://www.taglib.org/)
-- [ICU](https://unicode-org.github.io/icu/)
-- [KDSingleApplication 1.1.0 or higher](https://github.com/KDAB/KDSingleApplication)
+Mango is free software under the **GNU General Public License v3 or later**,
+inherited from Strawberry, which is in turn a fork of Clementine. All upstream
+copyright and licence headers are preserved unchanged; that attribution is a
+licence requirement, not an oversight.
 
-**Dependencies for optional features:**
-- Fingerprinting & tagging: [Chromaprint](https://acoustid.org/chromaprint)
-- Fast Spectrum Moodbar: [FFTW3](http://www.fftw.org/)
-- PulseAudio integration: [PulseAudio](https://www.freedesktop.org/wiki/Software/PulseAudio/)
-- Audio CD support: [libcdio](https://www.gnu.org/software/libcdio/)
-- MTP devices: [libmtp](http://libmtp.sourceforge.net/)
-- iPod Classic: [libgpod](http://www.gtkpod.org/libgpod/)
-- EBU R128 normalization: [libebur128](https://github.com/jiixyj/libebur128)
-
-Also install GStreamer plugins **base**, **good**, and optionally **bad**, **ugly** and **libav** for full codec support.
-
----
-
-## :wrench: Build from Source
-
-**Get the code:**
-
-    git clone --recursive https://github.com/strawberrymusicplayer/strawberry
-
-**Build and install:**
-
-    cd strawberry
-    cmake -S . -B build
-    cmake --build build --parallel $(nproc)
-    sudo cmake --install build
-
-For building on Windows with Visual Studio 2022/2026, see: :point_right: https://github.com/strawberrymusicplayer/strawberry-msvc-build-tools
-
----
-
-## :package: Packaging status
-
-[![Packaging status](https://repology.org/badge/vertical-allrepos/strawberry.svg?columns=3&header=Strawberry&exclude_unsupported=1)](https://repology.org/metapackage/strawberry/versions)
+Strawberry Music Player is Copyright the Strawberry contributors.
+Clementine is Copyright David Sansome and contributors.
