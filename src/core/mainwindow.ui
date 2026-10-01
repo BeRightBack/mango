@@ -506,7 +506,7 @@
     <property name="title">
      <string>Help</string>
     </property>
-    <addaction name="action_about_strawberry"/>
+    <addaction name="action_about_mango"/>
     <addaction name="action_about_qt"/>
     <addaction name="separator"/>
    </widget>
@@ -642,13 +642,13 @@
     <enum>QAction::PreferencesRole</enum>
    </property>
   </action>
-  <action name="action_about_strawberry">
+  <action name="action_about_mango">
    <property name="icon">
     <iconset resource="../../data/icons.qrc">
      <normaloff>:/icons/64x64/strawberry.png</normaloff>:/icons/64x64/strawberry.png</iconset>
    </property>
    <property name="text">
-    <string>&amp;About Strawberry</string>
+    <string>&amp;About Mango</string>
    </property>
    <property name="shortcut">
     <string>F1</string>

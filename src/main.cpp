@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 
   // This makes us show up nicely in gnome-volume-control
   g_set_application_name("Mango");
-  g_setenv("PULSE_PROP_application.icon_name", "strawberry", TRUE);
+  g_setenv("PULSE_PROP_application.icon_name", "mango", TRUE);
   g_setenv("PULSE_PROP_media.role", "music", TRUE);
 
   RegisterMetaTypes();
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
     logging::SetLevels(options.log_levels());
     if (!single_app.isPrimaryInstance()) {
       if (options.is_empty()) {
-        qLog(Info) << "Strawberry is already running - activating existing window (1)";
+        qLog(Info) << "Mango is already running - activating existing window (1)";
       }
       if (!single_app.sendMessage(options.Serialize())) {
         qLog(Error) << "Could not send message to primary instance.";
@@ -217,7 +217,7 @@ int main(int argc, char *argv[]) {
   KDSingleApplication single_app(QCoreApplication::applicationName().toLower(), KDSingleApplication::Option::IncludeUsernameInSocketName);
   if (!single_app.isPrimaryInstance()) {
     if (options.is_empty()) {
-      qLog(Info) << "Strawberry is already running - activating existing window (2)";
+      qLog(Info) << "Mango is already running - activating existing window (2)";
     }
     if (!single_app.sendMessage(options.Serialize())) {
       qLog(Error) << "Could not send message to primary instance.";
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
   QThread::currentThread()->setObjectName(u"Main"_s);
 
   if (QGuiApplication::platformName() != "wayland"_L1) {
-    QGuiApplication::setWindowIcon(IconLoader::Load(u"strawberry"_s));
+    QGuiApplication::setWindowIcon(IconLoader::Load(u"mango"_s));
   }
 
 #if defined(USE_BUNDLE)

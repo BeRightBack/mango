@@ -437,7 +437,7 @@ MainWindow::MainWindow(Application *app,
 #endif
 
   if (QGuiApplication::platformName() != "wayland"_L1) {
-    setWindowIcon(IconLoader::Load(u"strawberry"_s));
+    setWindowIcon(IconLoader::Load(u"mango"_s));
   }
 
   systemtrayicon_->SetDevicePixelRatioF(devicePixelRatioF());
@@ -454,7 +454,7 @@ MainWindow::MainWindow(Application *app,
   StyleHelper::setBaseColor(palette().color(QPalette::Highlight).darker());
 
   // Add tabs to the fancy tab widget
-  ui_->tabs->AddTab(context_view_, u"context"_s, IconLoader::Load(u"strawberry"_s, true, 0, 32), tr("Context"));
+  ui_->tabs->AddTab(context_view_, u"context"_s, IconLoader::Load(u"mango"_s, true, 0, 32), tr("Context"));
   ui_->tabs->AddTab(collection_view_, u"collection"_s, IconLoader::Load(u"library-music"_s, true, 0, 32), tr("Collection"));
   ui_->tabs->AddTab(queue_view_, u"queue"_s, IconLoader::Load(u"footsteps"_s, true, 0, 32), tr("Queue"));
   ui_->tabs->AddTab(playlist_list_, u"playlists"_s, IconLoader::Load(u"view-media-playlist"_s, true, 0, 32), tr("Playlists"));
@@ -530,7 +530,7 @@ MainWindow::MainWindow(Application *app,
 
   // Help menu
 
-  ui_->action_about_strawberry->setIcon(IconLoader::Load(u"strawberry"_s));
+  ui_->action_about_mango->setIcon(IconLoader::Load(u"mango"_s));
   ui_->action_about_qt->setIcon(QIcon(u":/qt-project.org/qmessagebox/images/qtlogo-64.png"_s));
 
   // Music menu
@@ -614,7 +614,7 @@ MainWindow::MainWindow(Application *app,
 #endif
   QObject::connect(ui_->action_settings, &QAction::triggered, this, &MainWindow::OpenSettingsDialog);
   QObject::connect(ui_->action_toggle_show_sidebar, &QAction::toggled, this, &MainWindow::ToggleSidebar);
-  QObject::connect(ui_->action_about_strawberry, &QAction::triggered, this, &MainWindow::ShowAboutDialog);
+  QObject::connect(ui_->action_about_mango, &QAction::triggered, this, &MainWindow::ShowAboutDialog);
   QObject::connect(ui_->action_about_qt, &QAction::triggered, qApp, &QApplication::aboutQt);
   QObject::connect(ui_->action_shuffle, &QAction::triggered, &*app_->playlist_manager(), &PlaylistManager::ShuffleCurrent);
   QObject::connect(ui_->action_open_file, &QAction::triggered, this, &MainWindow::AddFile);
