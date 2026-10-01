@@ -200,7 +200,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   QGuiApplication::setApplicationDisplayName(u"Mango Music Player"_s);
-  QGuiApplication::setDesktopFileName(u"org.strawberrymusicplayer.strawberry"_s);
+  QGuiApplication::setDesktopFileName(u"mango"_s);
   QGuiApplication::setQuitOnLastWindowClosed(false);
 
   QApplication a(argc, argv);

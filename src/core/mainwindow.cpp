@@ -1182,27 +1182,10 @@ MainWindow::MainWindow(Application *app,
   }
 #endif
 
-  {
-    bool asked_permission = true;
-    Settings s;
-#ifdef HAVE_QTSPARKLE
-    s.beginGroup("QtSparkle");
-    asked_permission = s.value(MainWindowSettings::kAskedPermission, false).toBool();
-    s.endGroup();
-#endif
-    if (asked_permission) {
-      s.beginGroup(MainWindowSettings::kSettingsGroup);
-      const bool do_not_show_sponsor_message = s.value(MainWindowSettings::kDoNotShowSponsorMessage, MainWindowSettings::kDefaultDoNotShowSponsorMessage).toBool();
-      s.endGroup();
-      if (!do_not_show_sponsor_message) {
-        MessageDialog *sponsor_message = new MessageDialog(this);
-        sponsor_message->set_settings_group(QLatin1String(MainWindowSettings::kSettingsGroup));
-        sponsor_message->set_do_not_show_message_again(QLatin1String(MainWindowSettings::kDoNotShowSponsorMessage));
-        sponsor_message->setAttribute(Qt::WA_DeleteOnClose);
-        sponsor_message->ShowMessage(tr("Sponsoring Strawberry"), tr("Strawberry is free and open source software. If you like Strawberry, please consider sponsoring the project. For more information about sponsorship see our website %1").arg(u"<a href= \"https://www.strawberrymusicplayer.org/\">www.strawberrymusicplayer.org</a>"_s), IconLoader::Load(u"dialog-information"_s));
-      }
-    }
-  }
+  // The upstream "Sponsoring Strawberry" dialog was removed. It asked users to
+  // fund the Strawberry project and linked to strawberrymusicplayer.org, which
+  // is a solicitation rather than a credit and points at the wrong application.
+  // Mango has no sponsorship page to replace it with.
 
   qLog(Debug) << "Started" << QThread::currentThread();
   initialized_ = true;
