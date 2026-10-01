@@ -50,5 +50,5 @@ int gst_strawberry_fastspectrum_register_static() {
     "GPL",
     "FastSpectrum",
     "gst-strawberry-fastspectrum",
-    "https://www.strawberrymusicplayer.org");
+    "https://frenzyzone.com");
 }

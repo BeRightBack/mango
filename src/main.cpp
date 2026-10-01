@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
   QCoreApplication::setApplicationName(u"Mango"_s);
   QCoreApplication::setOrganizationName(u"Mango"_s);
   QCoreApplication::setApplicationVersion(QStringLiteral(STRAWBERRY_VERSION_DISPLAY));
-  QCoreApplication::setOrganizationDomain(u"strawberrymusicplayer.org"_s);
+  QCoreApplication::setOrganizationDomain(u"frenzyzone.com"_s);
 
   // This makes us show up nicely in gnome-volume-control
   g_set_application_name("Mango");
