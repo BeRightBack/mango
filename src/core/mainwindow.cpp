@@ -1177,7 +1177,7 @@ MainWindow::MainWindow(Application *app,
       rosetta_message->set_settings_group(QLatin1String(MainWindowSettings::kSettingsGroup));
       rosetta_message->set_do_not_show_message_again(QLatin1String(MainWindowSettings::kIgnoreRosetta));
       rosetta_message->setAttribute(Qt::WA_DeleteOnClose);
-      rosetta_message->ShowMessage(tr("Strawberry running under Rosetta"), tr("You are running Strawberry under Rosetta. Running Strawberry under Rosetta is unsupported and known to have issues. You should download Strawberry for the correct CPU architecture from %1").arg(QLatin1String("<a href=\"https://downloads.strawberrymusicplayer.org/\">downloads.strawberrymusicplayer.org</a>")), IconLoader::Load(u"dialog-warning"_s));
+      rosetta_message->ShowMessage(tr("Mango running under Rosetta"), tr("You are running Mango under Rosetta. Running Mango under Rosetta is unsupported and known to have issues. You should download Mango for the correct CPU architecture from %1").arg(QLatin1String("<a href=\"https://github.com/BeRightBack/mango/releases\">github.com/BeRightBack/mango/releases</a>")), IconLoader::Load(u"dialog-warning"_s));
     }
   }
 #endif
@@ -3180,7 +3180,7 @@ void MainWindow::CheckFullRescanRevisions() {
 
   // If we have any...
   if (!reasons.isEmpty()) {
-    QString message = tr("The version of Strawberry you've just updated to requires a full collection rescan because of the new features listed below:") + u"<ul>"_s;
+    QString message = tr("The version of Mango you've just updated to requires a full collection rescan because of the new features listed below:") + u"<ul>"_s;
     for (const QString &reason : reasons) {
       message += "<li>"_L1 + reason + "</li>"_L1;
     }

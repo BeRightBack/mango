@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef Q_OS_LINUX
   if (Utilities::IsWSL()) {
-    const QString message = u"Strawberry is not supported when running under the Windows Subsystem for Linux (WSL). Please use the native Windows version instead."_s;
+    const QString message = u"Mango is not supported when running under the Windows Subsystem for Linux (WSL). Please use the native Windows version instead."_s;
     qLog(Error) << message;
     QMessageBox::critical(nullptr, u"Unsupported environment"_s, message);
     return 1;

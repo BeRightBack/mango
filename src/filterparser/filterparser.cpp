@@ -619,8 +619,8 @@ QString FilterParser::ToolTip() {
          u' ' +
          "<span style=\"font-weight:600;\">"_L1 +
          QObject::tr("artist") +
-         ":</span><span style=\"font-style:italic;\">Strawbs</span> "_L1 +
-         QObject::tr("searches for all artists containing the word %1.").arg("Strawbs"_L1) +
+         ":</span><span style=\"font-style:italic;\">Beatles</span> "_L1 +
+         QObject::tr("searches for all artists containing the word %1.").arg("Beatles"_L1) +
          "</p><p>"_L1 +
 
          QObject::tr("A word can be excluded with a preceding \"%1\", if you need to search for a word including \"%1\", place quotes around the word.").arg("-"_L1) +
