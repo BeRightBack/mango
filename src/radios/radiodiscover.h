@@ -106,6 +106,7 @@ class RadioDiscover : public QObject {
 
   // In-flight discovery state, one chain at a time per call.
   int pending_level_{0};
+  QString pending_callsign_;
 };
 
 #endif  // RADIODISCOVER_H

@@ -185,14 +185,31 @@ QList<QUrl> RadioDiscover::LeanstreamCandidates(const QString &callsign) {
       u"https://rogers-hls.leanstream.co"_s,
       u"https://rogers.leanstream.co"_s,
   };
-  // -MP3 comes first: several stations serve AAC that is dead while the MP3
-  // sibling on the same host still plays.
+  // The leanstream slug is frequently not the call sign: cimjam serves
+  // CIMJFM-MP3, so an FM insertion has to be tried alongside plain suffixes.
+  // -MP3 comes first because several stations serve AAC that is dead while the
+  // MP3 sibling on the same host still plays.
+  QStringList forms;
+  if (base.endsWith(u"AM"_s) || base.endsWith(u"FM"_s)) {
+    // A slug ending in am/fm is usually the call sign with its band marker in
+    // the wrong place: cimjam serves CIMJFM-MP3, not CIMJAM-MP3. Moving the
+    // marker to the end produces the form that actually resolves.
+    const QString stem = base.left(base.size() - 2);
+    if (!stem.isEmpty()) {
+      forms << stem + u"FM"_s << stem + u"AM"_s;
+    }
+  } else {
+    forms << base + u"FM"_s << base + u"AM"_s;
+  }
+  forms << base;
   const QStringList suffixes = {u"-MP3"_s, u"FM-MP3"_s, u"AM-MP3"_s, QString()};
 
   QList<QUrl> out;
   for (const QString &host : hosts) {
-    for (const QString &suffix : suffixes) {
-      out << QUrl(u"%1/%2%3"_s.arg(host, base, suffix));
+    for (const QString &form : forms) {
+      for (const QString &suffix : suffixes) {
+        out << QUrl(u"%1/%2%3"_s.arg(host, form, suffix));
+      }
     }
   }
   return out;
@@ -243,6 +260,9 @@ void RadioDiscover::Discover(const QString &slug, const std::function<void (cons
   }
 
   pending_level_ = 0;
+  // Remembered so the leanstream tier can be reached after the streamtheworld
+  // tier is exhausted, without re-deriving the call sign from a URL.
+  pending_callsign_ = callsign;
   TryTier(candidates, 0, QUrl(), finish);
 
 }
@@ -256,7 +276,7 @@ void RadioDiscover::TryTier(const QList<QUrl> &candidates, int index, const QUrl
     // Tier exhausted. Fall through to leanstream siblings before giving up.
     if (pending_level_ == 0) {
       pending_level_ = 1;
-      const QList<QUrl> next = LeanstreamCandidates(QUrl(slug_url).path().section(u'/', 2, 2));
+      const QList<QUrl> next = LeanstreamCandidates(pending_callsign_);
       if (!next.isEmpty()) {
         TryTier(next, 0, slug_url, done);
         return;
@@ -268,7 +288,17 @@ void RadioDiscover::TryTier(const QList<QUrl> &candidates, int index, const QUrl
 
   const QUrl candidate = candidates.at(index);
   if (candidate.path().endsWith(u".pls"_s)) {
-    FetchThenVerify(candidate, 0, done);
+    FetchThenVerify(candidate, 0,
+                    [this, candidates, index, slug_url, done](const QUrl &found) {
+      if (found.isValid() && !found.isEmpty()) {
+        done(found);
+        return;
+      }
+      // A PLS that yields nothing must not end the search: the next call sign
+      // variant may still be served. Without this the tier stopped at the first
+      // dead spelling, so only CHOM resolved.
+      TryTier(candidates, index + 1, slug_url, done);
+    });
     return;
   }
   DecodeTest(candidate, [this, candidate, candidates, index, slug_url, done](bool ok) {
@@ -321,7 +351,7 @@ void RadioDiscover::FetchThenVerify(const QUrl &pls_url, int depth,
       }
       const QUrl mirror(entries.at(i));
       DecodeTest(mirror, [this, mirror, i, &try_next, done](bool ok) {
-        if (ok) {
+          if (ok) {
           done(mirror);
           return;
         }
@@ -346,6 +376,24 @@ void RadioDiscover::DecodeTest(const QUrl &candidate, const std::function<void (
   // first wins. Without this guard the completion callback runs more than once
   // and destroys the process while a lambda still refers to it.
   auto settled = std::make_shared<bool>(false);
+
+  // The verdict has to be read from the pipeline's own diagnostics before the
+  // process is stopped. Killing first discards the buffered output, which made
+  // every probe report failure regardless of whether the stream played.
+  auto read_verdict = [process]() {
+    const QString output = QString::fromUtf8(process->readAll());
+    if (output.contains(QLatin1String("ERROR"), Qt::CaseInsensitive) ||
+        output.contains(QLatin1String("Internal data stream error")) ||
+        output.contains(QLatin1String("Could not update any variant"))) {
+      return false;
+    }
+    // The positive signal is that the pipeline began rendering audio. gst-launch
+    // reports it either as a bare "PLAYING" line or, while a stream is still
+    // buffering, inside "setting pipeline to PLAYING". Matching only the bare
+    // line missed every station that buffers on the first read, which is most
+    // of them.
+    return output.contains(QLatin1String("PLAYING"));
+  };
 
   auto finish = [this, process, done, settled](bool ok) {
     if (*settled) return;
@@ -378,23 +426,15 @@ void RadioDiscover::DecodeTest(const QUrl &candidate, const std::function<void (
   }
 
   QObject::connect(process, &QProcess::finished, this,
-                   [process, finish](int, QProcess::ExitStatus) {
-    const QString output = QString::fromUtf8(process->readAll());
-    finish(!output.contains(QLatin1String("ERROR"), Qt::CaseInsensitive));
+                   [process, finish, read_verdict](int, QProcess::ExitStatus) {
+    finish(read_verdict());
   });
 
-  // A live stream does not end, so the probe is deliberately cut short. Whether
-  // audio was produced is read from the pipeline's own diagnostics.
-  QTimer::singleShot(kDecodeProbeMs, process, [process, finish]() {
-    const QString output = QString::fromUtf8(process->readAll());
-    if (output.contains(QLatin1String("ERROR"), Qt::CaseInsensitive) ||
-        output.contains(QLatin1String("Internal data stream error")) ||
-        output.contains(QLatin1String("Could not update any variant"))) {
-      finish(false);
-      return;
-    }
-    // No error and the pipeline was still running: it was decoding.
-    finish(true);
+  // A live stream does not end, so the probe is deliberately cut short. The
+  // verdict is read first, because stopping the pipeline discards whatever is
+  // still buffered.
+  QTimer::singleShot(kDecodeProbeMs, process, [process, finish, read_verdict]() {
+    finish(read_verdict());
   });
 
 }
