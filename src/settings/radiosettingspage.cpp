@@ -28,9 +28,13 @@
 #include <QComboBox>
 #include <QSpinBox>
 #include <QCheckBox>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QPushButton>
 
 #include "settingsdialog.h"
 #include "radiosettingspage.h"
+#include "radios/radiocountries.h"
 #include "ui_radiosettingspage.h"
 #include "core/iconloader.h"
 #include "core/settings.h"
@@ -99,6 +103,28 @@ RadioSettingsPage::RadioSettingsPage(SettingsDialog *dialog, QWidget *parent)
   // Radio Browser country options
   PopulateCountries(ui_->combo_default_country);
 
+  // Searchable-country checklist, built from the same country list so the two
+  // can never disagree about which countries exist.
+  const QStringList enabled = RadioCountries::Enabled();
+  for (const QPair<QString, QString> &entry : RadioCountries::All()) {
+    QListWidgetItem *item = new QListWidgetItem(entry.first, ui_->list_enabled_countries);
+    item->setData(Qt::UserRole, entry.second);
+    item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+    item->setCheckState(enabled.contains(entry.second) ? Qt::Checked : Qt::Unchecked);
+  }
+
+  QObject::connect(ui_->button_select_countries, &QPushButton::clicked, this, [this]() {
+    for (int i = 0; i < ui_->list_enabled_countries->count(); ++i) {
+      ui_->list_enabled_countries->item(i)->setCheckState(Qt::Checked);
+    }
+  });
+
+  QObject::connect(ui_->button_select_none, &QPushButton::clicked, this, [this]() {
+    for (int i = 0; i < ui_->list_enabled_countries->count(); ++i) {
+      ui_->list_enabled_countries->item(i)->setCheckState(Qt::Unchecked);
+    }
+  });
+
 }
 
 RadioSettingsPage::~RadioSettingsPage() { delete ui_; }
@@ -147,6 +173,19 @@ void RadioSettingsPage::Save() {
     s.setValue(QLatin1String(RadioBrowserSettings::kDefaultSort), ui_->combo_default_sort->currentData().toString());
     s.setValue(QLatin1String(RadioBrowserSettings::kDefaultCountry), ui_->combo_default_country->currentData().toString());
     s.endGroup();
+  }
+
+  // Searchable countries. Written outside the group because RadioCountries
+  // reads the key without a group prefix.
+  {
+    QStringList codes;
+    for (int i = 0; i < ui_->list_enabled_countries->count(); ++i) {
+      QListWidgetItem *item = ui_->list_enabled_countries->item(i);
+      if (item->checkState() == Qt::Checked) {
+        codes << item->data(Qt::UserRole).toString();
+      }
+    }
+    RadioCountries::SetEnabled(codes);
   }
 
 }

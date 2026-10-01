@@ -32,6 +32,15 @@ constexpr char kDefaultSort[] = "default_sort";
 constexpr char kDefaultSortDefault[] = "votes";
 constexpr char kDefaultCountry[] = "default_country";
 
+  // Countries to search and discover in, as a comma separated list of ISO 3166
+  // alpha-2 codes. Empty means every country, which is the previous behaviour.
+  //
+  // Searching every country returns stations that will never be listened to,
+  // which makes discovery impractical because a decode probe is run per
+  // candidate. Narrowing to the countries actually wanted keeps a search
+  // meaningful and keeps the number of probes small.
+  constexpr char kEnabledCountries[] = "enabled_countries";
+
 }  // namespace RadioBrowserSettings
 
 #endif  // RADIOBROWSERSETTINGS_H

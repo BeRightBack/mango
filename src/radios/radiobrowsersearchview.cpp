@@ -34,6 +34,7 @@
 #include "widgets/stretchheaderview.h"
 #include "radiobrowserservice.h"
 #include "radiobrowsersearchview.h"
+#include "radiocountries.h"
 #include "radiobrowsersearchmodel.h"
 #include "radiomimedata.h"
 #include "ui_radiobrowsersearchview.h"
@@ -174,7 +175,11 @@ void RadioBrowserSearchView::DoSearch() {
   ui_->label_status->setText(tr("Searching..."));
   ui_->stacked->setCurrentWidget(ui_->page_results);
 
-  service_->Search(query, country, QString(), QString(), order, search_limit_, current_offset_, hide_broken_);
+  // When exactly one country is enabled the filter can be pushed to the
+  // server, so the result set is narrowed before anything is fetched. With
+  // several enabled the request stays broad and the results are filtered below.
+  const QString requested = RadioCountries::RequestedCountryCode(country);
+  service_->Search(query, requested, QString(), QString(), order, search_limit_, current_offset_, hide_broken_);
 
 }
 
@@ -183,14 +188,25 @@ void RadioBrowserSearchView::SearchFinished(const RadioChannelList &channels, co
   has_more_ = has_more;
   ui_->button_loadmore->setVisible(has_more);
 
-  if (channels.isEmpty() && current_offset_ == 0) {
+  // The directory takes a single country per request, so when several countries
+  // are enabled the results have to be narrowed here. Doing it before the model
+  // sees them also means stream repair is not spent on stations the user
+  // filtered out, which is what kept discovery from being worthwhile.
+  RadioChannelList allowed;
+  for (const RadioChannel &channel : channels) {
+    if (RadioCountries::IsEnabled(channel.country_code)) {
+      allowed.append(channel);
+    }
+  }
+
+  if (allowed.isEmpty() && current_offset_ == 0) {
     ui_->label_status->setText(tr("No stations found."));
     return;
   }
 
-  ui_->label_status->setText(tr("%1 stations found").arg(model_->rowCount() + channels.size()));
+  ui_->label_status->setText(tr("%1 stations found").arg(model_->rowCount() + allowed.size()));
 
-  model_->AddChannels(channels);
+  model_->AddChannels(allowed);
 
 }
 

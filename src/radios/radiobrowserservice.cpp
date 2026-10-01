@@ -241,6 +241,7 @@ void RadioBrowserService::SearchReply(QNetworkReply *reply, const int task_id, c
     channel.name = name;
     channel.url.setUrl(stream_url);
     channel.country = obj["country"_L1].toString().trimmed();
+    channel.country_code = obj["countrycode"_L1].toString().trimmed().toUpper();
     channel.tags = obj["tags"_L1].toString().trimmed();
     channel.codec = obj["codec"_L1].toString().trimmed();
 

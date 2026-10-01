@@ -92,6 +92,81 @@
       <item row="3" column="1">
        <widget class="QComboBox" name="combo_default_country"/>
       </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_enabled_countries">
+        <property name="text">
+         <string>Countries to search:</string>
+        </property>
+        <property name="toolTip">
+         <string>Limits radio search and stream repair to these countries. Leave everything unchecked to search everywhere.</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QWidget" name="widget_enabled_countries" native="true">
+        <layout class="QVBoxLayout" name="layout_enabled_countries">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QListWidget" name="list_enabled_countries">
+           <property name="selectionMode">
+            <enum>QAbstractItemView::NoSelection</enum>
+           </property>
+           <property name="uniformItemSizes">
+            <bool>true</bool>
+           </property>
+           <property name="maximumHeight">
+            <number>240</number>
+           </property>
+           <property name="toolTip">
+            <string>Checked countries are the only ones searched and repaired. With none checked, every country is searched.</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="layout_country_buttons">
+           <item>
+            <widget class="QPushButton" name="button_select_countries">
+             <property name="text">
+              <string>Select all</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="button_select_none">
+             <property name="text">
+              <string>Select none</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="spacer_countries">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>

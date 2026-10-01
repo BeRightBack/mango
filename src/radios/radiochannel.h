@@ -35,7 +35,10 @@ struct RadioChannel {
   QString name;
   QUrl url;
   QUrl thumbnail_url;
+  // Display name, e.g. "Canada". Kept separate from country_code because the
+  // country filter is matched on the code.
   QString country;
+  QString country_code;
   QString tags;
   QString codec;
 
@@ -44,13 +47,13 @@ struct RadioChannel {
 using RadioChannelList = QList<RadioChannel>;
 
 inline QDataStream &operator<<(QDataStream &stream, const RadioChannel &channel) {
-  stream << static_cast<int>(channel.source) << channel.name << channel.url << channel.thumbnail_url << channel.country << channel.tags << channel.codec;
+  stream << static_cast<int>(channel.source) << channel.name << channel.url << channel.thumbnail_url << channel.country << channel.country_code << channel.tags << channel.codec;
   return stream;
 }
 
 inline QDataStream &operator>>(QDataStream &stream, RadioChannel &channel) {
   int source = 0;
-  stream >> source >> channel.name >> channel.url >> channel.thumbnail_url >> channel.country >> channel.tags >> channel.codec;
+  stream >> source >> channel.name >> channel.url >> channel.thumbnail_url >> channel.country >> channel.country_code >> channel.tags >> channel.codec;
   channel.source = static_cast<Song::Source>(source);
   return stream;
 }
