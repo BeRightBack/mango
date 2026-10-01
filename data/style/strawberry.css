@@ -11,8 +11,8 @@
   background-clip: content;
 }
 
-#playlist[strawbs_background_enabled = "true"] {
-  background-image: url(:pictures/strawbs.png);
+#playlist[mango_background_enabled = "true"] {
+  background-image: url(:pictures/mango-mascot.png);
   background-attachment: fixed;
   background-position: bottom right;
   background-repeat: none;

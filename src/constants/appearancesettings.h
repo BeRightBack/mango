@@ -29,7 +29,7 @@ enum class BackgroundImageType {
   None,
   Custom,
   Album,
-  Strawbs
+  Mango
 };
 
 enum class BackgroundImagePosition {

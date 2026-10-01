@@ -265,9 +265,9 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="use_strawbs_background">
+       <widget class="QRadioButton" name="use_mango_background">
         <property name="text">
-         <string notr="true">A Taste of Strawbs</string>
+         <string notr="true">Mango the Mascot</string>
         </property>
        </widget>
       </item>
@@ -696,7 +696,7 @@
   <tabstop>use_default_background</tabstop>
   <tabstop>use_no_background</tabstop>
   <tabstop>use_album_cover_background</tabstop>
-  <tabstop>use_strawbs_background</tabstop>
+  <tabstop>use_mango_background</tabstop>
   <tabstop>use_custom_background_image</tabstop>
   <tabstop>background_image_filename</tabstop>
   <tabstop>select_background_image_filename_button</tabstop>

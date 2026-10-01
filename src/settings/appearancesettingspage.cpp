@@ -107,7 +107,7 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
   QObject::connect(ui_->use_default_background, &QRadioButton::toggled, ui_->widget_background_image_options, &AppearanceSettingsPage::setDisabled);
   QObject::connect(ui_->use_no_background, &QRadioButton::toggled, ui_->widget_background_image_options, &AppearanceSettingsPage::setDisabled);
   QObject::connect(ui_->use_album_cover_background, &QRadioButton::toggled, ui_->widget_background_image_options, &AppearanceSettingsPage::setEnabled);
-  QObject::connect(ui_->use_strawbs_background, &QRadioButton::toggled, ui_->widget_background_image_options, &AppearanceSettingsPage::setDisabled);
+  QObject::connect(ui_->use_mango_background, &QRadioButton::toggled, ui_->widget_background_image_options, &AppearanceSettingsPage::setDisabled);
   QObject::connect(ui_->use_custom_background_image, &QRadioButton::toggled, ui_->widget_background_image_options, &AppearanceSettingsPage::setEnabled);
 
   QObject::connect(ui_->select_background_image_filename_button, &QPushButton::pressed, this, &AppearanceSettingsPage::SelectBackgroundImage);
@@ -200,7 +200,7 @@ void AppearanceSettingsPage::Load() {
   // Playlist background image
   {
     const int v = s.value(kBackgroundImageType, static_cast<int>(kDefaultBackgroundImageType)).toInt();
-    background_image_type_ = (v >= static_cast<int>(BackgroundImageType::Default) && v <= static_cast<int>(BackgroundImageType::Strawbs)) ? static_cast<BackgroundImageType>(v) : kDefaultBackgroundImageType;
+    background_image_type_ = (v >= static_cast<int>(BackgroundImageType::Default) && v <= static_cast<int>(BackgroundImageType::Mango)) ? static_cast<BackgroundImageType>(v) : kDefaultBackgroundImageType;
   }
   background_image_filename_ = s.value(kBackgroundImageFilename).toString();
 
@@ -221,8 +221,8 @@ void AppearanceSettingsPage::Load() {
     case BackgroundImageType::Album:
       ui_->use_album_cover_background->setChecked(true);
       break;
-    case BackgroundImageType::Strawbs:
-      ui_->use_strawbs_background->setChecked(true);
+    case BackgroundImageType::Mango:
+      ui_->use_mango_background->setChecked(true);
       break;
   }
   ui_->background_image_filename->setText(background_image_filename_);
@@ -327,8 +327,8 @@ void AppearanceSettingsPage::Save() {
   else if (ui_->use_album_cover_background->isChecked()) {
     background_image_type_ = BackgroundImageType::Album;
   }
-  else if (ui_->use_strawbs_background->isChecked()) {
-    background_image_type_ = BackgroundImageType::Strawbs;
+  else if (ui_->use_mango_background->isChecked()) {
+    background_image_type_ = BackgroundImageType::Mango;
   }
   else if (ui_->use_custom_background_image->isChecked()) {
     background_image_type_ = BackgroundImageType::Custom;

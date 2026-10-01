@@ -1333,7 +1333,7 @@ void PlaylistView::ReloadSettings() {
       previous_background_image_ = QPixmap();
     }
     setProperty("default_background_enabled", background_image_type_ == AppearanceSettings::BackgroundImageType::Default);
-    setProperty("strawbs_background_enabled", background_image_type_ == AppearanceSettings::BackgroundImageType::Strawbs);
+    setProperty("mango_background_enabled", background_image_type_ == AppearanceSettings::BackgroundImageType::Mango);
     Q_EMIT BackgroundPropertyChanged();
     force_background_redraw_ = true;
   }
