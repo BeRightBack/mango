@@ -1,20 +1,20 @@
 /*
- * Strawberry Music Player
+ * Mango Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
  *
- * Strawberry is free software: you can redistribute it and/or modify
+ * Mango is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * Strawberry is distributed in the hope that it will be useful,
+ * Mango is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Strawberry.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Mango.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -410,7 +410,7 @@ void SmartPlaylistSearchTermWidget::RelativeValueChanged() {
   }
   // Explain the user why he can't proceed
   if (ui_->value_date_numeric1->value() >= ui_->value_date_numeric2->value()) {
-    QMessageBox::warning(this, u"Strawberry"_s, tr("The second value must be greater than the first one!"));
+    QMessageBox::warning(this, u"Mango"_s, tr("The second value must be greater than the first one!"));
   }
   // Emit the signal in any case, so the Next button will be disabled
   Q_EMIT Changed();

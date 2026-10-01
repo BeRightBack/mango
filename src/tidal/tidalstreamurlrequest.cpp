@@ -1,19 +1,19 @@
 /*
- * Strawberry Music Player
+ * Mango Music Player
  * Copyright 2018-2025, Jonas Kvinge <jonas@jkvinge.net>
  *
- * Strawberry is free software: you can redistribute it and/or modify
+ * Mango is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * Strawberry is distributed in the hope that it will be useful,
+ * Mango is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Strawberry.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Mango.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -244,7 +244,7 @@ void TidalStreamURLRequest::StreamURLReceived() {
       if (object_manifest.contains("encryptionType"_L1)) {
         const QString encryption_type = object_manifest["encryptionType"_L1].toString();
         if (!encryption_type.isEmpty() && encryption_type != "NONE"_L1) {
-          Q_EMIT StreamURLFailure(id_, media_url_, tr("Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings").arg(encryption_type));
+          Q_EMIT StreamURLFailure(id_, media_url_, tr("Received a %1 encrypted stream from Tidal, which Mango does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings").arg(encryption_type));
           return;
         }
       }
@@ -295,7 +295,7 @@ void TidalStreamURLRequest::StreamURLReceived() {
   if (json_object.contains("encryptionKey"_L1)) {
     const QString encryption_key = json_object["encryptionKey"_L1].toString();
     if (!encryption_key.isEmpty()) {
-      Q_EMIT StreamURLFailure(id_, media_url_, tr("Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings"));
+      Q_EMIT StreamURLFailure(id_, media_url_, tr("Received an encrypted stream from Tidal, which Mango does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings"));
       return;
     }
   }
@@ -304,7 +304,7 @@ void TidalStreamURLRequest::StreamURLReceived() {
     const QString security_type = json_object["securityType"_L1].toString();
     const QString security_token = json_object["securityToken"_L1].toString();
     if (!security_type.isEmpty() && security_type != "NONE"_L1 && !security_token.isEmpty()) {
-      Q_EMIT StreamURLFailure(id_, media_url_, tr("Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings").arg(security_type));
+      Q_EMIT StreamURLFailure(id_, media_url_, tr("Received a %1 encrypted stream from Tidal, which Mango does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings").arg(security_type));
       return;
     }
   }

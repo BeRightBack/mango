@@ -90,7 +90,13 @@ bool RadioCountries::IsEnabled(const QString &country_code) {
   // An explicitly empty selection means every country, which is what the
   // "Select none" button is for.
   if (codes.isEmpty()) return true;
-  if (country_code.isEmpty()) return false;
+
+  // Many directory entries carry no country at all. Dropping them made a search
+  // look empty apart from the handful of stations that happen to be tagged, so
+  // an untagged station is kept rather than silently excluded. It can still be
+  // added and played; it is simply not filtered out on a guess.
+  if (country_code.trimmed().isEmpty()) return true;
+
   return codes.contains(country_code.toUpper());
 
 }

@@ -1,21 +1,21 @@
 /*
- * Strawberry Music Player
+ * Mango Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
  * Copyright 2018-2021, Jonas Kvinge <jonas@jkvinge.net>
  *
- * Strawberry is free software: you can redistribute it and/or modify
+ * Mango is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * Strawberry is distributed in the hope that it will be useful,
+ * Mango is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Strawberry.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Mango.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -348,7 +348,7 @@ void DeviceView::Forget() {
   if (device_manager_->GetLister(device_idx) && device_manager_->GetLister(device_idx)->AskForScan(unique_id)) {
     ScopedPtr<QMessageBox> dialog(new QMessageBox(
         QMessageBox::Question, tr("Forget device"),
-        tr("Forgetting a device will remove it from this list and Strawberry will have to rescan all the songs again next time you connect it."),
+        tr("Forgetting a device will remove it from this list and Mango will have to rescan all the songs again next time you connect it."),
         QMessageBox::Cancel, this));
     QPushButton *forget = dialog->addButton(tr("Forget device"), QMessageBox::DestructiveRole);
     dialog->exec();

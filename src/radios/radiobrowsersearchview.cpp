@@ -223,8 +223,13 @@ void RadioBrowserSearchView::CountriesLoaded(const QList<QPair<QString, QString>
   ui_->combo_country->clear();
   ui_->combo_country->addItem(tr("All countries"), QString());
 
+  // Only the countries chosen in Settings belong in this list. Offering all 249
+  // made the dropdown unusable and invited a search nobody wanted.
+  const QStringList enabled = RadioCountries::Enabled();
   for (const QPair<QString, QString> &entry : countries) {
-    ui_->combo_country->addItem(entry.first, entry.second);
+    if (RadioCountries::IsEnabled(entry.second)) {
+      ui_->combo_country->addItem(entry.first, entry.second);
+    }
   }
 
   // Restore saved default country

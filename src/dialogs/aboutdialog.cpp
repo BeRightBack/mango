@@ -1,21 +1,21 @@
 /*
- * Strawberry Music Player
+ * Mango Music Player
  * This file was part of Clementine.
  * Copyright 2010, David Sansome <me@davidsansome.com>
  * Copyright 2013-2026, Jonas Kvinge <jonas@jkvinge.net>
  *
- * Strawberry is free software: you can redistribute it and/or modify
+ * Mango is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * Strawberry is distributed in the hope that it will be useful,
+ * Mango is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Strawberry.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Mango.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -42,7 +42,7 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui_{} {
 
   ui_.setupUi(this);
   setWindowFlags(windowFlags()|Qt::WindowStaysOnTopHint);
-  setWindowTitle(tr("About Strawberry"));
+  setWindowTitle(tr("About Mango"));
 
   strawberry_authors_ \
            << Person(u"Jonas Kvinge"_s);
@@ -157,31 +157,48 @@ QString AboutDialog::MainHtml() const {
 
   QString ret;
 
+  const QString colour = palette().text().color().name();
+  const QString link = QStringLiteral("<a style=\"color:%1;\">").arg(colour);
+
   ret += "<p>"_L1;
   ret += tr("Version %1").arg(QCoreApplication::applicationVersion());
   ret += "</p>"_L1;
 
   ret += "<p>"_L1;
-  ret += tr("Strawberry is a music player and music collection organizer.");
+  ret += tr("Mango Music Player is a music player and collection organizer.");
   ret += "<br />"_L1;
-  ret += tr("It is a fork of Clementine released in 2018 aimed at music collectors and audiophiles.");
+  ret += tr("It plays your own collection, streams internet radio, and reaches "
+            "streaming services. It is aimed at music collectors and audiophiles, "
+            "and it is built to keep working as those sources change.");
   ret += "</p>"_L1;
 
   ret += "<p>"_L1;
-  ret += tr("Strawberry is free software released under GPL. The source code is available on %1").arg(QStringLiteral("<a style=\"color:%1;\" href=\"https://github.com/strawberrymusicplayer/strawberry\">GitHub</a>.").arg(palette().text().color().name()));
-  ret += "<br />"_L1;
-  ret += tr("You should have received a copy of the GNU General Public License along with this program.  If not, see %1").arg(QStringLiteral("<a style=\"color:%1;\" href=\"http://www.gnu.org/licenses/\">http://www.gnu.org/licenses/</a>").arg(palette().text().color().name()));
+  ret += tr("Mango repairs what it can rather than hiding it. When a stream "
+            "directory returns a playlist that cannot play, the failure is "
+            "detected and the station is resolved again, so adding a station "
+            "keeps working instead of breaking.");
   ret += "</p>"_L1;
 
   ret += "<p>"_L1;
-  ret += tr("If you like Strawberry and can make use of it, consider sponsoring or donating.");
+  ret += tr("Mango is free software under the GNU General Public License, "
+            "version 3 or later. The source code is on %1%2%3%4.")
+      .arg(link,
+           QStringLiteral("https://github.com/BeRightBack/mango"),
+           QStringLiteral(">GitHub</a>"),
+           QStringLiteral("."));
   ret += "<br />"_L1;
-  ret += tr("You can sponsor the author on %1 or %2. You can also make a one-time payment through %3.").arg(
-    QStringLiteral("<a style=\"color:%1;\" href=\"https://www.patreon.com/jonaskvinge\">Patreon</a>").arg(palette().text().color().name()),
-    QStringLiteral("<a style=\"color:%1;\" href=\"https://github.com/sponsors/jonaski\">GitHub</a>").arg(palette().text().color().name()),
-    QStringLiteral("<a style=\"color:%1;\" href=\"https://paypal.me/jonaskvinge\">paypal.me/jonaskvinge</a>").arg(palette().text().color().name())
-  );
+  ret += tr("It is a custom port of Strawberry Music Player 1.2.30, which is in "
+            "turn a fork of Clementine. The upstream projects and their authors "
+            "are credited in full under %1%2%3%4. All upstream copyright notices "
+            "are retained, as the licence requires.")
+      .arg(link,
+           QStringLiteral("https://www.strawberrymusicplayer.org/"),
+           QStringLiteral(">their websites</a>"),
+           QStringLiteral("."));
+  ret += "</p>"_L1;
 
+  ret += "<p>"_L1;
+  ret += tr("Released free of charge and not for sale.");
   ret += "</p>"_L1;
 
   return ret;
