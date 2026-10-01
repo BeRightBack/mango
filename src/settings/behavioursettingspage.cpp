@@ -63,7 +63,7 @@ BehaviourSettingsPage::BehaviourSettingsPage(SettingsDialog *dialog, QWidget *pa
       ui_(new Ui_BehaviourSettingsPage) {
 
   ui_->setupUi(this);
-  setWindowIcon(IconLoader::Load(u"strawberry"_s, true, 0, 32));
+  setWindowIcon(IconLoader::Load(u"mango"_s, true, 0, 32));
 
   QObject::connect(ui_->checkbox_showtrayicon, &QCheckBox::toggled, this, &BehaviourSettingsPage::ShowTrayIconToggled);
 

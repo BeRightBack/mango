@@ -61,7 +61,7 @@ ContextAlbum::ContextAlbum(QWidget *parent)
       album_cover_choice_controller_(nullptr),
       downloading_covers_(false),
       timeline_fade_(new QTimeLine(kFadeTimeLineMs, this)),
-      image_strawberry_(u":/pictures/strawberry.png"_s),
+      image_strawberry_(u":/pictures/mango.png"_s),
       image_original_(image_strawberry_),
       pixmap_current_opacity_(1.0),
       desired_height_(width()) {

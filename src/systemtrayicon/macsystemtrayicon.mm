@@ -155,8 +155,8 @@ class MacSystemTrayIconPrivate {
 
 SystemTrayIcon::SystemTrayIcon(QObject *parent)
     : QObject(parent),
-      normal_icon_(QPixmap(u":/pictures/strawberry.png"_s).scaled(128, 128, Qt::KeepAspectRatio, Qt::SmoothTransformation)),
-      grey_icon_(QPixmap(u":/pictures/strawberry-grey.png"_s).scaled(128, 128, Qt::KeepAspectRatio, Qt::SmoothTransformation)),
+      normal_icon_(QPixmap(u":/pictures/mango.png"_s).scaled(128, 128, Qt::KeepAspectRatio, Qt::SmoothTransformation)),
+      grey_icon_(QPixmap(u":/pictures/mango-grey.png"_s).scaled(128, 128, Qt::KeepAspectRatio, Qt::SmoothTransformation)),
       playing_icon_(u":/pictures/tiny-play.png"_s),
       paused_icon_(u":/pictures/tiny-pause.png"_s),
       device_pixel_ratio_(1.0),
